@@ -14,20 +14,35 @@
  * limitations under the License.
  */
 
-package com.gruchalski.kafka.serializer.java8;
+package com.gruchalski.kafka.serializer.java8.concrete;
 
 import org.apache.kafka.common.serialization.Deserializer;
 import org.msgpack.core.MessagePack;
 import org.msgpack.core.MessageUnpacker;
 
+import java.io.IOException;
 import java.util.Map;
 
 public class JavaConcreteDeserializer<T extends JavaConcreteMessageType> implements Deserializer<T> {
     public void configure(Map<String, ?> var1, boolean var2) {}
     public void close() {}
     public T deserialize(String topic, byte[] data) {
-        MessageUnpacker packer = MessagePack.newDefaultUnpacker(data);
-        // TODO: implement
+        MessageUnpacker unpacker = MessagePack.newDefaultUnpacker(data);
+        try {
+            int version = unpacker.unpackInt();
+            int type = unpacker.unpackInt();
+            if (type == 1) {
+                return (T)new ConcreteJavaMessageImplementation(
+                        unpacker.unpackString()
+                );
+            }
+        } catch (IOException ex) {
+            return null;
+        } finally {
+            try { unpacker.close(); } catch (IOException ex) {
+                // who cares...
+            }
+        }
         return null;
     }
 }

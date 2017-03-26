@@ -21,7 +21,7 @@ import com.gruchalski.kafka.java8.KafkaClusterSafe;
 import com.gruchalski.kafka.java8.KafkaTopicStatus;
 import com.gruchalski.kafka.scala.KafkaTopicConfiguration;
 import com.gruchalski.kafka.scala.KafkaTopicCreateResult;
-import com.gruchalski.kafka.serializer.java8.ConcreteJavaMessageImplementation;
+import com.gruchalski.kafka.serializer.java8.concrete.ConcreteJavaMessageImplementation;
 import junit.framework.TestCase;
 
 import java.util.ArrayList;
@@ -34,6 +34,13 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 public class JavaTests extends TestCase {
+
+    public void testSerializerDeserializer() {
+        ConcreteJavaMessageImplementation impl = new ConcreteJavaMessageImplementation("unit-test-java");
+        byte[] serialized = impl.serializer().serialize("test", impl);
+        ConcreteJavaMessageImplementation deserialized = impl.deserializer().deserialize("test", serialized);
+        assertEquals(deserialized.property, impl.property);
+    }
 
     public void testClusterSetup() {
         KafkaCluster cluster = new KafkaCluster();

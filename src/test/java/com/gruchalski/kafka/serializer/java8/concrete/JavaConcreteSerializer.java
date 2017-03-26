@@ -14,12 +14,13 @@
  * limitations under the License.
  */
 
-package com.gruchalski.kafka.serializer.java8;
+package com.gruchalski.kafka.serializer.java8.concrete;
 
 import org.apache.kafka.common.serialization.Serializer;
 import org.msgpack.core.MessageBufferPacker;
 import org.msgpack.core.MessagePack;
 
+import java.io.IOException;
 import java.util.Map;
 
 public class JavaConcreteSerializer<T extends JavaConcreteMessageType> implements Serializer<T> {
@@ -27,7 +28,20 @@ public class JavaConcreteSerializer<T extends JavaConcreteMessageType> implement
     public void close() {}
     public byte[] serialize(String topic, T input) {
         MessageBufferPacker packer = MessagePack.newDefaultBufferPacker();
-        // TODO: implement
-        return packer.toByteArray();
+
+        if (input instanceof ConcreteJavaMessageImplementation) {
+            ConcreteJavaMessageImplementation item = (ConcreteJavaMessageImplementation)input;
+            try {
+                packer.packInt(item.id())
+                        .packInt(1)
+                        // actual data:
+                        .packString(item.property);
+                return packer.toByteArray();
+            } catch (IOException ex) {
+                return null;
+            }
+        }
+
+        return null;
     }
 }

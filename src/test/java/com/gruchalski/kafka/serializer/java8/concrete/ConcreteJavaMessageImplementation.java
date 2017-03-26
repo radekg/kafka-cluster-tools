@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.gruchalski.kafka.serializer.java8;
+package com.gruchalski.kafka.serializer.java8.concrete;
 
 import com.gruchalski.kafka.scala.DeserializerProvider;
 import com.gruchalski.kafka.scala.SerializerProvider;
@@ -24,6 +24,10 @@ import org.apache.kafka.common.serialization.Serializer;
 public class ConcreteJavaMessageImplementation
         extends JavaConcreteMessageType
         implements SerializerProvider<ConcreteJavaMessageImplementation>, DeserializerProvider<ConcreteJavaMessageImplementation> {
+
+    public int id() {
+        return 1;
+    }
 
     public final String property;
 

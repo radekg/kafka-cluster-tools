@@ -20,6 +20,8 @@ import com.gruchalski.kafka.scala.{DeserializerProvider, SerializerProvider}
 import org.apache.kafka.common.serialization.{Deserializer, Serializer}
 import org.msgpack.core.MessagePack
 
+import util.Try
+
 class TestConcreteSerializer[T <: TestConcreteProvider.TestConcrete] extends Serializer[T] {
   override def configure(map: java.util.Map[String, _], b: Boolean): Unit = {}
   override def close(): Unit = {}
@@ -53,6 +55,8 @@ class TestConcreteDeserializer[T <: TestConcreteProvider.TestConcrete] extends D
     } catch {
       case any: Throwable ⇒
         null.asInstanceOf[T]
+    } finally {
+      Try(unpacker.close())
     }
   }
 }
