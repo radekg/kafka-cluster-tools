@@ -10,19 +10,19 @@ by the concrete implementation of the messages.
 
 ## Build
 
-    git clone https://github.com/radekg/kafka-cluster-utils.git
-    cd kafka-cluster-utils
+    git clone https://github.com/radekg/kafka-cluster-tools.git
+    cd kafka-cluster-tools
     sbt clean test publishLocal
     
 ## Use with SBT
 
-    libraryDependencies += "com.gruchalski" %% "kafka-cluster-utils" % "1.0.0" % "test"
+    libraryDependencies += "com.gruchalski" %% "kafka-cluster-tools" % "1.0.0" % "test"
 
 ## Use with Maven
 
     <dependency>
         <groupId>com.gruchalski</groupId>
-        <artifactId>kafka-cluster-utils</artifactId>
+        <artifactId>kafka-cluster-tools</artifactId>
         <version>1.0.0</version>
         <scope>test</scope>
     </dependency>
