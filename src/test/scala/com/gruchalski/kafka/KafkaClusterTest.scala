@@ -19,15 +19,15 @@ package com.gruchalski.kafka
 import com.gruchalski.kafka.serializer.TestConcreteProvider
 import org.apache.kafka.clients.producer.RecordMetadata
 import org.scalatest.concurrent.Eventually
-import org.scalatest.time.{Second, Seconds, Span}
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.time.{Milliseconds, Second, Seconds, Span}
+import org.scalatest.{Inside, Matchers, WordSpec}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
-class KafkaClusterTest extends WordSpec with Matchers with Eventually {
+class KafkaClusterTest extends WordSpec with Matchers with Eventually with Inside {
 
-  override implicit val patienceConfig = PatienceConfig(timeout = scaled(Span(10, Seconds)), interval = scaled(Span(1, Second)))
+  override implicit val patienceConfig = PatienceConfig(timeout = scaled(Span(10, Seconds)), interval = scaled(Span(100, Milliseconds)))
 
   implicit val ec: ExecutionContext = scala.concurrent.ExecutionContext.Implicits.global
 
@@ -93,10 +93,11 @@ class KafkaClusterTest extends WordSpec with Matchers with Eventually {
             }
 
             val topicToUse = safe.configuration.`com.gruchalski.kafka.topics`.head.get.name
+            val concreteToUse = TestConcreteProvider.ConcreteExample(property = "full kafka publish / consume test")
 
             // should be able to publish:
             var receivedMetadata: Option[RecordMetadata] = None
-            safe.cluster.produce(topicToUse, TestConcreteProvider.ConcreteExample()).foreach { f ⇒
+            safe.cluster.produce(topicToUse, concreteToUse).foreach { f ⇒
               f.onComplete {
                 case Success(metadata) ⇒ receivedMetadata = Some(metadata)
                 case Failure(ex)       ⇒ fail(ex)
@@ -107,8 +108,11 @@ class KafkaClusterTest extends WordSpec with Matchers with Eventually {
             }
 
             // should be able to consume the published message:
-            implicit val concreteDeserializer = TestConcreteProvider.ConcreteExample().deserializer()
-            safe.cluster.consume[TestConcreteProvider.ConcreteExample](topicToUse)
+            implicit val concreteDeserializer = concreteToUse.deserializer()
+            eventually {
+              val consumed = safe.cluster.consume[TestConcreteProvider.ConcreteExample](topicToUse)
+              consumed should matchPattern { case Some((_, concreteToUse, _)) ⇒ }
+            }
 
           case None ⇒ fail("Expected Kafka cluster to come up.")
         }

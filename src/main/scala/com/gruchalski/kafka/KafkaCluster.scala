@@ -16,17 +16,18 @@
 
 package com.gruchalski.kafka
 
-import java.util.concurrent.{ExecutorService, Executors}
+import java.util.concurrent.{ConcurrentLinkedDeque, ExecutorService, Executors}
 
 import com.typesafe.config.{Config, ConfigFactory}
 import kafka.admin.AdminUtils
 import kafka.server.{KafkaConfig, KafkaServer}
 import kafka.utils.{MockTime, TestUtils}
-import org.apache.kafka.clients.consumer.KafkaConsumer
+import org.apache.kafka.clients.consumer.{ConsumerRecord, KafkaConsumer}
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord, RecordMetadata}
 import org.apache.kafka.common.network.ListenerName
-import org.apache.kafka.common.serialization.{ByteArrayDeserializer, ByteArraySerializer, Deserializer}
+import org.apache.kafka.common.serialization.{ByteArraySerializer, Deserializer}
 
+import scala.collection.mutable.{HashMap ⇒ MHashMap}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
@@ -45,8 +46,10 @@ class KafkaCluster()(implicit config: Config, ec: ExecutionContext) {
   private var kafkaServers = List.empty[KafkaServer]
   private var executor: Option[ExecutorService] = None
 
-  private var producers = scala.collection.mutable.HashMap.empty[Class[_], KafkaProducer[_, _]]
-  private var consumers = scala.collection.mutable.HashMap.empty[Class[_], KafkaConsumer[_, _]]
+  private var producer: Option[KafkaProducer[Array[Byte], Array[Byte]]] = None
+  private var consumer: Option[KafkaConsumer[Array[Byte], Array[Byte]]] = None
+
+  private var outQueues = MHashMap.empty[String, KafkaCluster.OutQueue]
 
   /**
    * Start the cluster. Method is idempotent, subsequent calls return currently running cluster, if cluster is
@@ -101,8 +104,16 @@ class KafkaCluster()(implicit config: Config, ec: ExecutionContext) {
    */
   def stop(): Unit = {
     executor.foreach(_.shutdownNow())
+    producer.foreach(_.close())
+    consumer.foreach { c ⇒ c.close() }
     kafkaServers.foreach(_.shutdown())
     zooKeeper.stop()
+    consumer = None
+    producer = None
+    executor = None
+    outQueues.clear()
+    kafkaServers = List.empty[KafkaServer]
+    // TODO: log, yeah, but consider creating a new instance...
   }
 
   /**
@@ -167,33 +178,32 @@ class KafkaCluster()(implicit config: Config, ec: ExecutionContext) {
   def produce[T](topic: String, key: Option[Array[Byte]], value: SerializerProvider[T], callback: ProducerCallback): Option[Future[RecordMetadata]] = {
     kafkaServers.headOption match {
       case Some(kafkaServer) ⇒
-        if (!producers.contains(value.serializer().getClass)) {
-          producers.put(
-            value.serializer().getClass,
-            TestUtils.createNewProducer[Array[Byte], T](
-              brokerList = bootstrapServers().mkString(","),
-              acks = configuration.`com.gruchalski.kafka.producer.acks`,
-              maxBlockMs = configuration.`com.gruchalski.kafka.producer.max-block-ms`,
-              bufferSize = configuration.`com.gruchalski.kafka.producer.buffer-size`,
-              retries = configuration.`com.gruchalski.kafka.producer.retries`,
-              lingerMs = configuration.`com.gruchalski.kafka.producer.linger-ms`,
-              requestTimeoutMs = configuration.`com.gruchalski.kafka.producer.request-timeout-ms`,
-              securityProtocol = configuration.`com.gruchalski.kafka.producer.security-protocol`,
-              props = Some(configuration.`com.gruchalski.kafka.producer.props`),
-              keySerializer = new ByteArraySerializer,
-              valueSerializer = value.serializer()
-            )
+        if (producer == None) {
+          producer = Some(TestUtils.createNewProducer[Array[Byte], Array[Byte]](
+            brokerList = bootstrapServers().mkString(","),
+            acks = configuration.`com.gruchalski.kafka.producer.acks`,
+            maxBlockMs = configuration.`com.gruchalski.kafka.producer.max-block-ms`,
+            bufferSize = configuration.`com.gruchalski.kafka.producer.buffer-size`,
+            retries = configuration.`com.gruchalski.kafka.producer.retries`,
+            lingerMs = configuration.`com.gruchalski.kafka.producer.linger-ms`,
+            requestTimeoutMs = configuration.`com.gruchalski.kafka.producer.request-timeout-ms`,
+            securityProtocol = configuration.`com.gruchalski.kafka.producer.security-protocol`,
+            props = Some(configuration.`com.gruchalski.kafka.producer.props`),
+            keySerializer = new ByteArraySerializer,
+            valueSerializer = new ByteArraySerializer
+          ))
+        }
+        producer.foreach { p ⇒
+          p.send(
+            key match {
+              case Some(keyData) ⇒
+                new ProducerRecord(topic, keyData, value.serializer().serialize(topic, value.asInstanceOf[T]))
+              case None ⇒
+                new ProducerRecord(topic, value.serializer().serialize(topic, value.asInstanceOf[T]))
+            },
+            callback
           )
         }
-        producers.get(value.serializer().getClass).map(_.asInstanceOf[KafkaProducer[Array[Byte], SerializerProvider[T]]].send(
-          key match {
-            case Some(keyData) ⇒
-              new ProducerRecord(topic, keyData, value)
-            case None ⇒
-              new ProducerRecord(topic, value)
-          },
-          callback
-        ))
         Some(callback.result())
       case None ⇒
         None
@@ -207,28 +217,37 @@ class KafkaCluster()(implicit config: Config, ec: ExecutionContext) {
    * @tparam T type of the message to consume
    * @return a consumed object, if available at the time of the call
    */
-  def consume[T <: DeserializerProvider[_]](topic: String)(implicit deserializer: Deserializer[T]): Option[T] = {
+  def consume[T <: DeserializerProvider[_]](topic: String)(implicit deserializer: Deserializer[T]): Option[Tuple3[Array[Byte], T, ConsumerRecord[Array[Byte], Array[Byte]]]] = {
     kafkaServers.headOption match {
       case Some(kafkaServer) ⇒
-        if (!consumers.contains(deserializer.getClass)) {
-          val props = configuration.`com.gruchalski.kafka.consumer.props`
-          props.put("key.deserializer", (new ByteArrayDeserializer).getClass.getCanonicalName)
-          props.put("value.deserializer", deserializer.getClass.getCanonicalName)
-          consumers.put(
-            deserializer.getClass,
-            TestUtils.createNewConsumer(
-              brokerList = bootstrapServers().mkString(","),
-              groupId = configuration.`com.gruchalski.kafka.consumer.group-id`,
-              autoOffsetReset = configuration.`com.gruchalski.kafka.consumer.auto-offset-reset`,
-              partitionFetchSize = configuration.`com.gruchalski.kafka.producer.partition-fetch-size`,
-              sessionTimeout = configuration.`com.gruchalski.kafka.producer.session-timeout`,
-              securityProtocol = configuration.`com.gruchalski.kafka.consumer.security-protocol`,
-              props = Some(props)
-            )
+
+        if (consumer == None) {
+          val _consumer = TestUtils.createNewConsumer(
+            brokerList = bootstrapServers().mkString(","),
+            groupId = configuration.`com.gruchalski.kafka.consumer.group-id`,
+            autoOffsetReset = configuration.`com.gruchalski.kafka.consumer.auto-offset-reset`,
+            partitionFetchSize = configuration.`com.gruchalski.kafka.consumer.partition-fetch-size`,
+            sessionTimeout = configuration.`com.gruchalski.kafka.consumer.session-timeout`,
+            securityProtocol = configuration.`com.gruchalski.kafka.consumer.security-protocol`,
+            props = Some(configuration.`com.gruchalski.kafka.consumer.props`)
           )
-          None
+          consumer = Some(_consumer)
+          schedulePoll()
         }
-        None
+
+        import scala.collection.JavaConverters._
+        if (!outQueues.contains(topic)) {
+          outQueues.put(topic, new ConcurrentLinkedDeque[ConsumerRecord[Array[Byte], Array[Byte]]]())
+          consumer.foreach(_.subscribe(List(topic).asJava))
+        }
+
+        Option(outQueues.getOrElseUpdate(topic, new ConcurrentLinkedDeque[ConsumerRecord[Array[Byte], Array[Byte]]]()).poll()) match {
+          case Some(record) ⇒
+            Some((record.key(), deserializer.deserialize(topic, record.value()), record))
+          case None ⇒
+            None
+        }
+
       case None ⇒
         None
     }
@@ -244,12 +263,38 @@ class KafkaCluster()(implicit config: Config, ec: ExecutionContext) {
     }.flatten
   }
 
+  private def schedulePoll(): Unit = {
+    consumer.foreach { c ⇒
+      executor.foreach { exec ⇒
+        if (!exec.isShutdown) {
+          scheduleWithConsumerAndExecutor(c, exec)
+        }
+      }
+    }
+  }
+
+  private def scheduleWithConsumerAndExecutor(consumer: KafkaConsumer[Array[Byte], Array[Byte]], executor: ExecutorService): Unit = {
+    executor.submit(ConsumerWork(configuration.`com.gruchalski.kafka.consumer.poll-timeout-ms`, consumer) { result ⇒
+      result match {
+        case Left(error) ⇒
+        // TODO: log the error
+        case Right(records) ⇒
+          records.foreach { record ⇒
+            outQueues.get(record.topic).foreach(_.offer(record))
+          }
+      }
+      schedulePoll()
+    })
+  }
+
 }
 
 /**
  * Kafka cluster companion object.
  */
 object KafkaCluster {
+
+  type OutQueue = ConcurrentLinkedDeque[ConsumerRecord[Array[Byte], Array[Byte]]]
 
   def apply()(implicit ec: ExecutionContext, config: Config = ConfigFactory.load().resolve()) =
     new KafkaCluster()(config, ec)

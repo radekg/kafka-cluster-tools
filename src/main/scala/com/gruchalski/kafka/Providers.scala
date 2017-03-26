@@ -16,9 +16,12 @@
 
 package com.gruchalski.kafka
 
+import org.apache.kafka.clients.consumer.{ConsumerRecord, KafkaConsumer}
 import org.apache.kafka.clients.producer.{Callback, RecordMetadata}
 
+import scala.collection.mutable.{HashMap ⇒ MHashMap}
 import scala.concurrent.{Future, Promise}
+import scala.util.Try
 
 case class ProducerCallback() extends Callback {
   private val p = Promise[RecordMetadata]()
@@ -31,4 +34,14 @@ case class ProducerCallback() extends Callback {
   def result(): Future[RecordMetadata] = p.future
 }
 
-case class ConsumerWork()
+case class ConsumedItem[T](deserializedItem: T, record: ConsumerRecord[Array[Byte], Array[Byte]])
+
+case class ConsumerWork(
+    pollTimeout: Long,
+    consumer: KafkaConsumer[Array[Byte], Array[Byte]]
+)(callback: (Either[Throwable, List[ConsumerRecord[Array[Byte], Array[Byte]]]]) ⇒ Unit) extends Runnable {
+  override def run(): Unit = {
+    import scala.collection.JavaConverters._
+    callback.apply(Try(consumer.poll(pollTimeout).asScala.toList).toEither)
+  }
+}

@@ -122,12 +122,12 @@ class Configuration(val underlying: Config) {
     Try { underlying.getString("com.gruchalski.kafka.consumer.group-id") }
       .getOrElse("group")
 
-  lazy val `com.gruchalski.kafka.producer.partition-fetch-size` =
-    Try { underlying.getLong("com.gruchalski.kafka.producer.partition-fetch-size") }
+  lazy val `com.gruchalski.kafka.consumer.partition-fetch-size` =
+    Try { underlying.getLong("com.gruchalski.kafka.consumer.partition-fetch-size") }
       .getOrElse(4096L)
 
-  lazy val `com.gruchalski.kafka.producer.session-timeout` =
-    Try { underlying.getInt("com.gruchalski.kafka.producer.session-timeout") }
+  lazy val `com.gruchalski.kafka.consumer.session-timeout` =
+    Try { underlying.getInt("com.gruchalski.kafka.consumer.session-timeout") }
       .getOrElse(30000)
 
   lazy val `com.gruchalski.kafka.consumer.security-protocol` =
@@ -139,6 +139,10 @@ class Configuration(val underlying: Config) {
   lazy val `com.gruchalski.kafka.consumer.props` =
     Try { underlying.getConfig("com.gruchalski.kafka.consumer.props") }
       .getOrElse(ConfigFactory.empty()).toProperties()
+
+  lazy val `com.gruchalski.kafka.consumer.poll-timeout-ms` =
+    Try { underlying.getLong("com.gruchalski.kafka.consumer.poll-timeout-ms") }
+      .getOrElse(200L)
 
   /**
    * Optional list
