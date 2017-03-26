@@ -23,8 +23,8 @@ import org.scalatest.concurrent.Eventually
 import org.scalatest.time.{Milliseconds, Seconds, Span}
 import org.scalatest.{Inside, Matchers, WordSpec}
 
-import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success}
+import concurrent.{ExecutionContext, Future}
+import util.{Failure, Success}
 
 class KafkaClusterTest extends WordSpec with Matchers with Eventually with Inside {
 

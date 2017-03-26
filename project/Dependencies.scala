@@ -14,9 +14,12 @@ object Version {
   val typesafeConfig = "1.3.1"
   val zookeeper = "3.4.9"
 }
-
 object Exclusions {
-  val excludeAll = Seq(ExclusionRule("log4j", "log4j"), ExclusionRule("org.slf4j", "slf4j-log4j12"))
+  val excludeAll = Seq(
+    ExclusionRule("log4j", "log4j"),
+    ExclusionRule("org.slf4j", "slf4j-log4j12"),
+    ExclusionRule("com.sun.jdmk", "jmxtools"),
+    ExclusionRule("com.sun.jmx", "jmxri"))
 }
 
 object Library {
