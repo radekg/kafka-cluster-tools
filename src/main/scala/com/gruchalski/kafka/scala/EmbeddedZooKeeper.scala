@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Rad Gruchalski
+ * Copyright 2017 Radek Gruchalski
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.gruchalski.kafka
+package com.gruchalski.kafka.scala
 
 import org.apache.curator.test.{InstanceSpec, TestingCluster}
 
@@ -42,7 +42,7 @@ class EmbeddedZooKeeper(configuration: Configuration) {
    * @return a tuple containing the instance specs and connection string of the cluster
    */
   def start(): Option[EmbeddedZooKeeper.EmbeddedZooKeeperData] = {
-    import scala.collection.JavaConverters._
+    import collection.JavaConverters._
     cluster match {
       case Some(_cluster) ⇒
         Some(EmbeddedZooKeeper.EmbeddedZooKeeperData(_cluster.getInstances.asScala.toList, _cluster.getConnectString))

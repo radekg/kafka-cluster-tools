@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Rad Gruchalski
+ * Copyright 2017 Radek Gruchalski
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.gruchalski.kafka
+package com.gruchalski.kafka.scala
 
 import java.util.concurrent.{ConcurrentLinkedDeque, ExecutorService, Executors}
 
@@ -39,7 +39,9 @@ import scala.util.Try
  */
 case class KafkaClusterSafe(cluster: KafkaCluster, configuration: Configuration)
 
-class KafkaCluster()(implicit config: Config, ec: ExecutionContext) {
+class KafkaCluster()(implicit
+  config: Config,
+    ec: ExecutionContext) {
 
   private val configuration = Configuration(config)
   private val zooKeeper = EmbeddedZooKeeper(configuration)
@@ -105,7 +107,7 @@ class KafkaCluster()(implicit config: Config, ec: ExecutionContext) {
   def stop(): Unit = {
     executor.foreach(_.shutdownNow())
     producer.foreach(_.close())
-    consumer.foreach { c ⇒ c.close() }
+    consumer.foreach { c ⇒ Try(c.close()) }
     kafkaServers.foreach(_.shutdown())
     zooKeeper.stop()
     consumer = None
@@ -139,12 +141,12 @@ class KafkaCluster()(implicit config: Config, ec: ExecutionContext) {
             )
             Future {
               val start = System.currentTimeMillis()
-              var status: KafkaTopicStatus.Status = KafkaTopicStatus.DoesNotExist
+              var status: KafkaTopicStatus.Status = KafkaTopicStatus.DoesNotExist()
               var timeout = false
               while (status == KafkaTopicStatus.DoesNotExist || !timeout) {
                 Thread.sleep(50)
                 if (AdminUtils.topicExists(kafkaServer.zkUtils, topicConfig.name)) {
-                  status = KafkaTopicStatus.Exists
+                  status = KafkaTopicStatus.Exists()
                 }
                 timeout = System.currentTimeMillis() - start >= configuration.`com.gruchalski.kafka.topic-wait-for-create-success-timeout-ms`
               }
@@ -152,7 +154,7 @@ class KafkaCluster()(implicit config: Config, ec: ExecutionContext) {
             }
           }.toEither match {
             case Left(error) ⇒
-              Future(KafkaTopicCreateResult(topicConfig, KafkaTopicStatus.DoesNotExist, Some(error)))
+              Future(KafkaTopicCreateResult(topicConfig, KafkaTopicStatus.DoesNotExist(), Some(error)))
             case Right(result) ⇒
               result
           }
@@ -165,7 +167,7 @@ class KafkaCluster()(implicit config: Config, ec: ExecutionContext) {
 
   /**
    * Produce a message of a given type. If the producer for the given type does not exist, it will be created.
-   * @param topic topic to send the messge to
+   * @param topic topic to send the message to
    * @param value value to send
    * @param callback callback handling metadata or error, the callback is used to return a scala future
    * @tparam T type of the value to send
@@ -217,7 +219,7 @@ class KafkaCluster()(implicit config: Config, ec: ExecutionContext) {
    * @tparam T type of the message to consume
    * @return a consumed object, if available at the time of the call
    */
-  def consume[T <: DeserializerProvider[_]](topic: String)(implicit deserializer: Deserializer[T]): Option[Tuple3[Array[Byte], T, ConsumerRecord[Array[Byte], Array[Byte]]]] = {
+  def consume[T <: DeserializerProvider[_]](topic: String)(implicit deserializer: Deserializer[T]): Option[ConsumedItem[T]] = {
     kafkaServers.headOption match {
       case Some(kafkaServer) ⇒
 
@@ -234,16 +236,15 @@ class KafkaCluster()(implicit config: Config, ec: ExecutionContext) {
           consumer = Some(_consumer)
           schedulePoll()
         }
-
-        import scala.collection.JavaConverters._
         if (!outQueues.contains(topic)) {
+          import collection.JavaConverters._
           outQueues.put(topic, new ConcurrentLinkedDeque[ConsumerRecord[Array[Byte], Array[Byte]]]())
           consumer.foreach(_.subscribe(List(topic).asJava))
         }
 
         Option(outQueues.getOrElseUpdate(topic, new ConcurrentLinkedDeque[ConsumerRecord[Array[Byte], Array[Byte]]]()).poll()) match {
           case Some(record) ⇒
-            Some((record.key(), deserializer.deserialize(topic, record.value()), record))
+            Some(ConsumedItem(deserializer.deserialize(topic, record.value()), record))
           case None ⇒
             None
         }
@@ -296,7 +297,9 @@ object KafkaCluster {
 
   type OutQueue = ConcurrentLinkedDeque[ConsumerRecord[Array[Byte], Array[Byte]]]
 
-  def apply()(implicit ec: ExecutionContext, config: Config = ConfigFactory.load().resolve()) =
+  def apply()(implicit
+    ec: ExecutionContext = concurrent.ExecutionContext.Implicits.global,
+    config: Config = ConfigFactory.load().resolve()) =
     new KafkaCluster()(config, ec)
 
 }

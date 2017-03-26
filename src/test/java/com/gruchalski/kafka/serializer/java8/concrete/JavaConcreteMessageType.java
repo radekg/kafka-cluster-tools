@@ -14,24 +14,9 @@
  * limitations under the License.
  */
 
-package com.gruchalski.utils
+package com.gruchalski.kafka.serializer.java8.concrete;
 
-/**
- * String extensions.
- */
-object StringImplicits {
+import com.gruchalski.kafka.serializer.java8.IdProvider;
 
-  /**
-   * String implicits.
-   * @param string a string
-   */
-  implicit class StringExtensions(val string: String) {
-
-    /**
-     * Remove leading and trailing quotes, if any.
-     * @return a string without leading and trailing quotes
-     */
-    def unquoted(): String = string.replaceAll("^\"|\"$", "")
-  }
-
+public abstract class JavaConcreteMessageType implements IdProvider {
 }

@@ -14,24 +14,21 @@
  * limitations under the License.
  */
 
-package com.gruchalski.utils
+package com.gruchalski.kafka.java8;
 
 /**
- * String extensions.
+ * Kafka topic existence status, Java representation.
  */
-object StringImplicits {
-
-  /**
-   * String implicits.
-   * @param string a string
-   */
-  implicit class StringExtensions(val string: String) {
+public class KafkaTopicStatus {
 
     /**
-     * Remove leading and trailing quotes, if any.
-     * @return a string without leading and trailing quotes
+     * Topic exists.
      */
-    def unquoted(): String = string.replaceAll("^\"|\"$", "")
-  }
+    public final static String Exists = "exists";
+
+    /**
+     * Topic does not exist.
+     */
+    public final static String DoesNotExist = "doesnotexist";
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Rad Gruchalski
+ * Copyright 2017 Radek Gruchalski
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.gruchalski.kafka
+package com.gruchalski.kafka.scala
 
 import com.gruchalski.typesafe.config.ConfigImplicits._
 import com.typesafe.config.{Config, ConfigFactory}
@@ -150,7 +150,7 @@ class Configuration(val underlying: Config) {
   lazy val `com.gruchalski.kafka.topics` = {
     import com.gruchalski.utils.StringImplicits.StringExtensions
 
-    import scala.collection.JavaConverters._
+    import collection.JavaConverters._
     val topicConfigs = Try { underlying.getConfigList("com.gruchalski.kafka.topics").asScala.toList }
       .getOrElse(List.empty[Config])
     topicConfigs.map { topicConfig ⇒

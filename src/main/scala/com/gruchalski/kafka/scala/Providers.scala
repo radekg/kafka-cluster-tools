@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Rad Gruchalski
+ * Copyright 2017 Radek Gruchalski
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,15 +14,17 @@
  * limitations under the License.
  */
 
-package com.gruchalski.kafka
+package com.gruchalski.kafka.scala
 
 import org.apache.kafka.clients.consumer.{ConsumerRecord, KafkaConsumer}
 import org.apache.kafka.clients.producer.{Callback, RecordMetadata}
 
-import scala.collection.mutable.{HashMap ⇒ MHashMap}
 import scala.concurrent.{Future, Promise}
 import scala.util.Try
 
+/**
+ * Producer callback. Use <code>result()</code> method to get the data.
+ */
 case class ProducerCallback() extends Callback {
   private val p = Promise[RecordMetadata]()
   override def onCompletion(recordMetadata: RecordMetadata, e: Exception) = {
@@ -31,17 +33,34 @@ case class ProducerCallback() extends Callback {
       case None        ⇒ p.success(recordMetadata)
     }
   }
+
+  /**
+   * Get the data future.
+   * @return data future
+   */
   def result(): Future[RecordMetadata] = p.future
 }
 
+/**
+ * Represents a materialized consumed item.
+ * @param deserializedItem deserialized item
+ * @param record original consumed record
+ * @tparam T type of a consumed item
+ */
 case class ConsumedItem[T](deserializedItem: T, record: ConsumerRecord[Array[Byte], Array[Byte]])
 
+/**
+ * Internal Kafka consumer worker.
+ * @param pollTimeout how long to wait for a single batch of data
+ * @param consumer Kafka consumer
+ * @param callback callback
+ */
 case class ConsumerWork(
     pollTimeout: Long,
     consumer: KafkaConsumer[Array[Byte], Array[Byte]]
 )(callback: (Either[Throwable, List[ConsumerRecord[Array[Byte], Array[Byte]]]]) ⇒ Unit) extends Runnable {
   override def run(): Unit = {
-    import scala.collection.JavaConverters._
+    import collection.JavaConverters._
     callback.apply(Try(consumer.poll(pollTimeout).asScala.toList).toEither)
   }
 }

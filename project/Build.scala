@@ -19,7 +19,10 @@ object Build extends AutoPlugin {
       .setPreference(AlignSingleLineCaseStatements.MaxArrowIndent, 100)
       .setPreference(DoubleIndentClassDeclaration, true),
 
-    HeaderPlugin.autoImport.headers := Map("scala" -> Apache2_0("2017", "Radek Gruchalski"))
+    HeaderPlugin.autoImport.headers := Map(
+      "scala" -> Apache2_0("2017", "Radek Gruchalski"),
+      "java" -> Apache2_0("2017", "Radek Gruchalski")
+    )
 
   )
 
