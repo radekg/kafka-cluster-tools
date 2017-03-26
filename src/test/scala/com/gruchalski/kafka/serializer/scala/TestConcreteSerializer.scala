@@ -20,7 +20,7 @@ import com.gruchalski.kafka.scala.{DeserializerProvider, SerializerProvider}
 import org.apache.kafka.common.serialization.{Deserializer, Serializer}
 import org.msgpack.core.MessagePack
 
-import util.Try
+import scala.util.Try
 
 class TestConcreteSerializer[T <: TestConcreteProvider.TestConcrete] extends Serializer[T] {
   override def configure(map: java.util.Map[String, _], b: Boolean): Unit = {}

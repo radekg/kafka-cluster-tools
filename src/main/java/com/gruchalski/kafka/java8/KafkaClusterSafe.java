@@ -18,11 +18,27 @@ package com.gruchalski.kafka.java8;
 
 import com.gruchalski.kafka.scala.Configuration;
 
+/**
+ * Representation of a successfully started cluster. A cluster instance wrapped in this object is safe to use
+ * in the program. Returned by {@link com.gruchalski.kafka.java8.KafkaCluster#start()}.
+ */
 public class KafkaClusterSafe {
 
+    /**
+     * a safe to use cluster
+     */
     public final KafkaCluster cluster;
+
+    /**
+     * configuration used by the cluster
+     */
     public final Configuration configuration;
 
+    /**
+     * Create an instance of safe to use Kafka cluster.
+     * @param cluster a safe to use Kafka cluster
+     * @param configuration a safe to use configuration
+     */
     public KafkaClusterSafe(KafkaCluster cluster, Configuration configuration) {
         this.cluster = cluster;
         this.configuration = configuration;

@@ -19,7 +19,7 @@ package com.gruchalski.kafka.scala
 import com.gruchalski.typesafe.config.ConfigImplicits._
 import com.typesafe.config.{Config, ConfigFactory}
 
-import util.Try
+import scala.util.Try
 
 /**
  * Configuration companion object.
@@ -148,8 +148,9 @@ class Configuration(val underlying: Config) {
    * Optional list
    */
   lazy val `com.gruchalski.kafka.topics` = {
-    import collection.JavaConverters._
     import com.gruchalski.utils.StringImplicits.StringExtensions
+
+    import collection.JavaConverters._
     val topicConfigs = Try { underlying.getConfigList("com.gruchalski.kafka.topics").asScala.toList }
       .getOrElse(List.empty[Config])
     topicConfigs.map { topicConfig ⇒

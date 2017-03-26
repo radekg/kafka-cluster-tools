@@ -19,9 +19,12 @@ package com.gruchalski.kafka;
 import com.gruchalski.kafka.java8.KafkaCluster;
 import com.gruchalski.kafka.java8.KafkaClusterSafe;
 import com.gruchalski.kafka.java8.KafkaTopicStatus;
+import com.gruchalski.kafka.java8.ProducerCallback;
+import com.gruchalski.kafka.scala.ConsumedItem;
 import com.gruchalski.kafka.scala.KafkaTopicConfiguration;
 import com.gruchalski.kafka.scala.KafkaTopicCreateResult;
 import com.gruchalski.kafka.serializer.java8.concrete.ConcreteJavaMessageImplementation;
+import com.gruchalski.testing.AsyncUtil;
 import junit.framework.TestCase;
 
 import java.util.ArrayList;
@@ -76,21 +79,28 @@ public class JavaTests extends TestCase {
                     fail(ex.getMessage());
                 }
 
-                com.gruchalski.kafka.java8.ProducerCallback callback = new com.gruchalski.kafka.java8.ProducerCallback();
+                ConcreteJavaMessageImplementation concrete = new ConcreteJavaMessageImplementation("unit-test-concrete");
+                ProducerCallback callback = new ProducerCallback();
                 kafkaClusterSafe.cluster.produce(
                         topics.get(0).name(),
-                        new ConcreteJavaMessageImplementation(),
+                        concrete,
                         callback);
 
                 CountDownLatch producerLatch = new CountDownLatch(1);
                 callback.result().thenAccept(result -> {
                    producerLatch.countDown();
                 });
+
                 try {
                     producerLatch.await(10000, TimeUnit.MILLISECONDS);
                 } catch (InterruptedException ex) {
                     fail(ex.getMessage());
                 }
+
+                AsyncUtil.eventually(() -> {
+                    Optional<ConsumedItem<ConcreteJavaMessageImplementation>> consumed = kafkaClusterSafe.cluster.consume(topics.get(0).name(), concrete.deserializer());
+                    assertEquals(consumed.get().deserializedItem().property, concrete.property);
+                });
 
                 kafkaClusterSafe.cluster.stop();
             }

@@ -20,11 +20,11 @@ import com.gruchalski.kafka.scala.{ConsumedItem, KafkaCluster, KafkaTopicCreateR
 import com.gruchalski.kafka.serializer.scala.TestConcreteProvider
 import org.apache.kafka.clients.producer.RecordMetadata
 import org.scalatest.concurrent.Eventually
-import org.scalatest.time.{Milliseconds, Second, Seconds, Span}
+import org.scalatest.time.{Milliseconds, Seconds, Span}
 import org.scalatest.{Inside, Matchers, WordSpec}
 
-import concurrent.{ExecutionContext, Future}
-import util.{Failure, Success}
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success}
 
 class KafkaClusterTest extends WordSpec with Matchers with Eventually with Inside {
 

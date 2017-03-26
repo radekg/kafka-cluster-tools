@@ -18,7 +18,6 @@ package com.gruchalski.kafka.scala
 
 import java.util.concurrent.{ConcurrentLinkedDeque, ExecutorService, Executors}
 
-import com.gruchalski.kafka._
 import com.typesafe.config.{Config, ConfigFactory}
 import kafka.admin.AdminUtils
 import kafka.server.{KafkaConfig, KafkaServer}
@@ -28,9 +27,9 @@ import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord, RecordM
 import org.apache.kafka.common.network.ListenerName
 import org.apache.kafka.common.serialization.{ByteArraySerializer, Deserializer}
 
-import collection.mutable.{HashMap ⇒ MHashMap}
-import concurrent.{ExecutionContext, Future}
-import util.Try
+import scala.collection.mutable.{HashMap ⇒ MHashMap}
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.Try
 
 /**
  * Representation of a successfully started cluster. A cluster instance wrapped in this object is safe to use
@@ -108,7 +107,7 @@ class KafkaCluster()(implicit
   def stop(): Unit = {
     executor.foreach(_.shutdownNow())
     producer.foreach(_.close())
-    consumer.foreach { c ⇒ c.close() }
+    consumer.foreach { c ⇒ Try(c.close()) }
     kafkaServers.foreach(_.shutdown())
     zooKeeper.stop()
     consumer = None
@@ -168,7 +167,7 @@ class KafkaCluster()(implicit
 
   /**
    * Produce a message of a given type. If the producer for the given type does not exist, it will be created.
-   * @param topic topic to send the messge to
+   * @param topic topic to send the message to
    * @param value value to send
    * @param callback callback handling metadata or error, the callback is used to return a scala future
    * @tparam T type of the value to send

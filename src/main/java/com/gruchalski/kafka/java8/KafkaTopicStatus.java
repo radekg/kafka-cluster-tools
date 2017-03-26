@@ -16,9 +16,19 @@
 
 package com.gruchalski.kafka.java8;
 
+/**
+ * Kafka topic existence status, Java representation.
+ */
 public class KafkaTopicStatus {
 
+    /**
+     * Topic exists.
+     */
     public final static String Exists = "exists";
+
+    /**
+     * Topic does not exist.
+     */
     public final static String DoesNotExist = "doesnotexist";
 
 }

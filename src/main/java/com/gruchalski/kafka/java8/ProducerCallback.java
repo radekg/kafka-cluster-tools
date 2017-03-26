@@ -16,16 +16,30 @@
 
 package com.gruchalski.kafka.java8;
 
+import com.gruchalski.kafka.java8.compat.ScalaCompat;
 import org.apache.kafka.clients.producer.RecordMetadata;
 
 import java.util.concurrent.CompletableFuture;
 
+/**
+ * Java representation of the producer callback.
+ */
 public class ProducerCallback {
+
     public final com.gruchalski.kafka.scala.ProducerCallback callback;
+
+    /**
+     * Create a new instance of the producer callback.
+     */
     public ProducerCallback() {
         callback = new com.gruchalski.kafka.scala.ProducerCallback();
     }
+
+    /**
+     * Get the result.
+     * @return resulting future
+     */
     public CompletableFuture<RecordMetadata> result() {
-        return scala.compat.java8.FutureConverters.toJava(callback.result()).toCompletableFuture();
+        return ScalaCompat.fromScala(callback.result());
     }
 }

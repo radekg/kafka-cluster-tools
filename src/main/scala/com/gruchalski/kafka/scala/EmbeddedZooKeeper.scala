@@ -18,7 +18,7 @@ package com.gruchalski.kafka.scala
 
 import org.apache.curator.test.{InstanceSpec, TestingCluster}
 
-import util.Try
+import scala.util.Try
 
 /**
  * Embedded ZooKeeper companion object.

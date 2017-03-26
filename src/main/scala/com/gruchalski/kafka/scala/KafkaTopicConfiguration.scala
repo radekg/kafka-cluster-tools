@@ -22,7 +22,7 @@ import com.typesafe.config.{Config, ConfigFactory}
 import kafka.admin.RackAwareMode
 import org.apache.kafka.common.protocol.SecurityProtocol
 
-import util.Try
+import scala.util.Try
 
 /**
  * Kafka topic configuration companion object.

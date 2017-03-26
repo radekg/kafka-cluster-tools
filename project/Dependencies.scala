@@ -2,8 +2,8 @@ import sbt._
 
 object Version {
   val apacheCurator = "2.12.0"
-  val javaslang = "2.1.0-alpha"
   val junit = "4.12"
+  val junitInterface = "0.11"
   val kafka = "0.10.2.0"
   val logbackClassic = "1.1.3"
   val msgPack = "0.8.12"
@@ -21,8 +21,8 @@ object Exclusions {
 
 object Library {
   val apacheCurator: ModuleID = "org.apache.curator" % "curator-test" % Version.apacheCurator excludeAll(Exclusions.excludeAll: _*)
-  val javaslang: ModuleID = "io.javaslang" % "javaslang" % Version.javaslang
   val junit: ModuleID = "junit" % "junit" % Version.junit
+  val junitInterface: ModuleID = "com.novocode" % "junit-interface" % Version.junitInterface
   val kafka: ModuleID = "org.apache.kafka" %% "kafka" % Version.kafka excludeAll(Exclusions.excludeAll: _*)
   val kafkaClients: ModuleID = "org.apache.kafka" % "kafka-clients" % Version.kafka excludeAll(Exclusions.excludeAll: _*)
   val logbackClassic: ModuleID = "ch.qos.logback" % "logback-classic" % Version.logbackClassic
@@ -41,5 +41,5 @@ object DependencyGroups {
   val kafkaTestTools = Seq(Library.kafka classifier "test", Library.kafkaClients classifier "test")
   val logging = Seq(Library.scalaLogging, Library.slf4j, Library.logbackClassic)
   val zookeeper = Seq(Library.apacheCurator, Library.zookeeper)
-  val unitTests = Seq(Library.scalaTest % "test", Library.junit % "test")
+  val unitTests = Seq(Library.scalaTest % "test", Library.junit % "test", Library.junitInterface % "test")
 }

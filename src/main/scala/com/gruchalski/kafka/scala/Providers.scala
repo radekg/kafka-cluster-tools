@@ -19,9 +19,12 @@ package com.gruchalski.kafka.scala
 import org.apache.kafka.clients.consumer.{ConsumerRecord, KafkaConsumer}
 import org.apache.kafka.clients.producer.{Callback, RecordMetadata}
 
-import concurrent.{Future, Promise}
-import util.Try
+import scala.concurrent.{Future, Promise}
+import scala.util.Try
 
+/**
+ * Producer callback. Use <code>result()</code> method to get the data.
+ */
 case class ProducerCallback() extends Callback {
   private val p = Promise[RecordMetadata]()
   override def onCompletion(recordMetadata: RecordMetadata, e: Exception) = {
@@ -30,11 +33,28 @@ case class ProducerCallback() extends Callback {
       case None        ⇒ p.success(recordMetadata)
     }
   }
+
+  /**
+   * Get the data future.
+   * @return data future
+   */
   def result(): Future[RecordMetadata] = p.future
 }
 
+/**
+ * Represents a materialized consumed item.
+ * @param deserializedItem deserialized item
+ * @param record original consumed record
+ * @tparam T type of a consumed item
+ */
 case class ConsumedItem[T](deserializedItem: T, record: ConsumerRecord[Array[Byte], Array[Byte]])
 
+/**
+ * Internal Kafka consumer worker.
+ * @param pollTimeout how long to wait for a single batch of data
+ * @param consumer Kafka consumer
+ * @param callback callback
+ */
 case class ConsumerWork(
     pollTimeout: Long,
     consumer: KafkaConsumer[Array[Byte], Array[Byte]]
