@@ -1,5 +1,4 @@
 name := "kafka-cluster-tools"
-version := "1.0.0"
 organization := "com.gruchalski"
 scalaVersion := "2.12.1"
 
