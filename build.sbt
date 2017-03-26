@@ -11,6 +11,6 @@ libraryDependencies ++= DependencyGroups.configuration
 libraryDependencies ++= DependencyGroups.logging
 libraryDependencies ++= DependencyGroups.kafka
 libraryDependencies ++= DependencyGroups.kafkaTestTools
-libraryDependencies ++= Seq(Library.msgPack)
+libraryDependencies ++= Seq(Library.msgPack, Library.scalaJava8Compat, Library.javaslang)
 libraryDependencies ++= DependencyGroups.unitTests
 libraryDependencies ++= DependencyGroups.zookeeper

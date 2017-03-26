@@ -61,8 +61,8 @@ class KafkaClusterTest extends WordSpec with Matchers with Eventually with Insid
             eventually {
               topicCreateStatuses should matchPattern {
                 case List(
-                  KafkaTopicCreateResult(_, KafkaTopicStatus.Exists, None),
-                  KafkaTopicCreateResult(_, KafkaTopicStatus.Exists, None)) ⇒
+                  KafkaTopicCreateResult(_, KafkaTopicStatus.Exists(), None),
+                  KafkaTopicCreateResult(_, KafkaTopicStatus.Exists(), None)) ⇒
               }
             }
           case None ⇒ fail("Expected Kafka cluster to come up.")
@@ -87,8 +87,8 @@ class KafkaClusterTest extends WordSpec with Matchers with Eventually with Insid
             eventually {
               topicCreateStatuses should matchPattern {
                 case List(
-                  KafkaTopicCreateResult(_, KafkaTopicStatus.Exists, None),
-                  KafkaTopicCreateResult(_, KafkaTopicStatus.Exists, None)) ⇒
+                  KafkaTopicCreateResult(_, KafkaTopicStatus.Exists(), None),
+                  KafkaTopicCreateResult(_, KafkaTopicStatus.Exists(), None)) ⇒
               }
             }
 
@@ -111,7 +111,7 @@ class KafkaClusterTest extends WordSpec with Matchers with Eventually with Insid
             implicit val concreteDeserializer = concreteToUse.deserializer()
             eventually {
               val consumed = safe.cluster.consume[TestConcreteProvider.ConcreteExample](topicToUse)
-              consumed should matchPattern { case Some((_, concreteToUse, _)) ⇒ }
+              consumed should matchPattern { case Some(ConsumedItem(concreteToUse, _)) ⇒ }
             }
 
           case None ⇒ fail("Expected Kafka cluster to come up.")

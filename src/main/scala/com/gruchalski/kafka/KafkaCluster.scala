@@ -39,7 +39,8 @@ import scala.util.Try
  */
 case class KafkaClusterSafe(cluster: KafkaCluster, configuration: Configuration)
 
-class KafkaCluster()(implicit config: Config, ec: ExecutionContext) {
+class KafkaCluster()(implicit config: Config,
+                     ec: ExecutionContext) {
 
   private val configuration = Configuration(config)
   private val zooKeeper = EmbeddedZooKeeper(configuration)
@@ -139,12 +140,12 @@ class KafkaCluster()(implicit config: Config, ec: ExecutionContext) {
             )
             Future {
               val start = System.currentTimeMillis()
-              var status: KafkaTopicStatus.Status = KafkaTopicStatus.DoesNotExist
+              var status: KafkaTopicStatus.Status = KafkaTopicStatus.DoesNotExist()
               var timeout = false
               while (status == KafkaTopicStatus.DoesNotExist || !timeout) {
                 Thread.sleep(50)
                 if (AdminUtils.topicExists(kafkaServer.zkUtils, topicConfig.name)) {
-                  status = KafkaTopicStatus.Exists
+                  status = KafkaTopicStatus.Exists()
                 }
                 timeout = System.currentTimeMillis() - start >= configuration.`com.gruchalski.kafka.topic-wait-for-create-success-timeout-ms`
               }
@@ -152,7 +153,7 @@ class KafkaCluster()(implicit config: Config, ec: ExecutionContext) {
             }
           }.toEither match {
             case Left(error) ⇒
-              Future(KafkaTopicCreateResult(topicConfig, KafkaTopicStatus.DoesNotExist, Some(error)))
+              Future(KafkaTopicCreateResult(topicConfig, KafkaTopicStatus.DoesNotExist(), Some(error)))
             case Right(result) ⇒
               result
           }
@@ -217,7 +218,7 @@ class KafkaCluster()(implicit config: Config, ec: ExecutionContext) {
    * @tparam T type of the message to consume
    * @return a consumed object, if available at the time of the call
    */
-  def consume[T <: DeserializerProvider[_]](topic: String)(implicit deserializer: Deserializer[T]): Option[Tuple3[Array[Byte], T, ConsumerRecord[Array[Byte], Array[Byte]]]] = {
+  def consume[T <: DeserializerProvider[_]](topic: String)(implicit deserializer: Deserializer[T]): Option[ConsumedItem[T]] = {
     kafkaServers.headOption match {
       case Some(kafkaServer) ⇒
 
@@ -243,7 +244,7 @@ class KafkaCluster()(implicit config: Config, ec: ExecutionContext) {
 
         Option(outQueues.getOrElseUpdate(topic, new ConcurrentLinkedDeque[ConsumerRecord[Array[Byte], Array[Byte]]]()).poll()) match {
           case Some(record) ⇒
-            Some((record.key(), deserializer.deserialize(topic, record.value()), record))
+            Some(ConsumedItem(deserializer.deserialize(topic, record.value()), record))
           case None ⇒
             None
         }
@@ -296,7 +297,8 @@ object KafkaCluster {
 
   type OutQueue = ConcurrentLinkedDeque[ConsumerRecord[Array[Byte], Array[Byte]]]
 
-  def apply()(implicit ec: ExecutionContext, config: Config = ConfigFactory.load().resolve()) =
+  def apply()(implicit ec: ExecutionContext = scala.concurrent.ExecutionContext.Implicits.global,
+              config: Config = ConfigFactory.load().resolve()) =
     new KafkaCluster()(config, ec)
 
 }

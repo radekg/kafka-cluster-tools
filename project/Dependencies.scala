@@ -2,10 +2,13 @@ import sbt._
 
 object Version {
   val apacheCurator = "2.12.0"
+  val javaslang = "2.1.0-alpha"
+  val junit = "4.12"
   val kafka = "0.10.2.0"
   val logbackClassic = "1.1.3"
   val msgPack = "0.8.12"
   val scalaLogging = "3.5.0"
+  val scalaJava8Compat = "0.8.0"
   val scalaTest = "3.0.1"
   val slf4j = "1.7.22"
   val typesafeConfig = "1.3.1"
@@ -17,12 +20,15 @@ object Exclusions {
 }
 
 object Library {
-  val apacheCurator = "org.apache.curator" % "curator-test" % Version.apacheCurator excludeAll(Exclusions.excludeAll: _*)
+  val apacheCurator: ModuleID = "org.apache.curator" % "curator-test" % Version.apacheCurator excludeAll(Exclusions.excludeAll: _*)
+  val javaslang: ModuleID = "io.javaslang" % "javaslang" % Version.javaslang
+  val junit: ModuleID = "junit" % "junit" % Version.junit
   val kafka: ModuleID = "org.apache.kafka" %% "kafka" % Version.kafka excludeAll(Exclusions.excludeAll: _*)
   val kafkaClients: ModuleID = "org.apache.kafka" % "kafka-clients" % Version.kafka excludeAll(Exclusions.excludeAll: _*)
   val logbackClassic: ModuleID = "ch.qos.logback" % "logback-classic" % Version.logbackClassic
   val msgPack: ModuleID = "org.msgpack" % "msgpack-core" % Version.msgPack
   val scalaLogging: ModuleID = "com.typesafe.scala-logging" % "scala-logging_2.11" % Version.scalaLogging
+  val scalaJava8Compat: ModuleID = "org.scala-lang.modules" %% "scala-java8-compat" % Version.scalaJava8Compat
   val scalaTest: ModuleID =  "org.scalatest" %% "scalatest" % Version.scalaTest excludeAll(Exclusions.excludeAll: _*)
   val slf4j: ModuleID = "org.slf4j" % "log4j-over-slf4j" % Version.slf4j
   val typesafeConfig: ModuleID = "com.typesafe" % "config" % Version.typesafeConfig excludeAll(Exclusions.excludeAll: _*)
@@ -35,5 +41,5 @@ object DependencyGroups {
   val kafkaTestTools = Seq(Library.kafka classifier "test", Library.kafkaClients classifier "test")
   val logging = Seq(Library.scalaLogging, Library.slf4j, Library.logbackClassic)
   val zookeeper = Seq(Library.apacheCurator, Library.zookeeper)
-  val unitTests = Seq(Library.scalaTest % "test")
+  val unitTests = Seq(Library.scalaTest % "test", Library.junit % "test")
 }

@@ -96,17 +96,25 @@ class KafkaTopicConfiguration(
  * Kafka topic existence status.
  */
 object KafkaTopicStatus {
-  sealed trait Status
+  sealed abstract class Status()
 
   /**
    * Topic exists.
    */
-  case object Exists extends Status
+  case class Exists() extends Status {
+    override def toString: String = {
+      "exists"
+    }
+  }
 
   /**
    * Topic does not exist.
    */
-  case object DoesNotExist extends Status
+  case class DoesNotExist() extends Status {
+    override def toString: String = {
+      "doesnotexist"
+    }
+  }
 }
 
 /**
