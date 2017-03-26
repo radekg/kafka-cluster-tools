@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Rad Gruchalski
+ * Copyright 2017 Radek Gruchalski
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,23 +14,18 @@
  * limitations under the License.
  */
 
-package com.gruchalski.kafka
+package com.gruchalski.kafka.java8;
 
-import org.apache.kafka.common.serialization.{Deserializer, Serializer}
+import com.gruchalski.kafka.scala.Configuration;
 
-/**
- * Serializer provider.
- * @tparam ST type of the item handled by this serializer
- */
-trait SerializerProvider[ST] { t: ST ⇒
-  def serializer(): Serializer[ST]
-}
+public class KafkaClusterSafe {
 
-/**
- * Deserializer provider.
- * @tparam DST type of the item handled by this deserializer
- */
-trait DeserializerProvider[DST] { t: DST ⇒
-  type DeserializerType
-  def deserializer(): Deserializer[DST]
+    public final KafkaCluster cluster;
+    public final Configuration configuration;
+
+    public KafkaClusterSafe(KafkaCluster cluster, Configuration configuration) {
+        this.cluster = cluster;
+        this.configuration = configuration;
+    }
+
 }

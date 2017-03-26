@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Rad Gruchalski
+ * Copyright 2017 Radek Gruchalski
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-package com.gruchalski.kafka.serializer
+package com.gruchalski.kafka.serializer.scala
 
-import com.gruchalski.kafka.{DeserializerProvider, SerializerProvider}
+import com.gruchalski.kafka.scala.{DeserializerProvider, SerializerProvider}
 import org.apache.kafka.common.serialization.{Deserializer, Serializer}
 import org.msgpack.core.MessagePack
 

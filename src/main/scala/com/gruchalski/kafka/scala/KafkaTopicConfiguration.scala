@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Rad Gruchalski
+ * Copyright 2017 Radek Gruchalski
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.gruchalski.kafka
+package com.gruchalski.kafka.scala
 
 import java.util.Properties
 
@@ -22,7 +22,7 @@ import com.typesafe.config.{Config, ConfigFactory}
 import kafka.admin.RackAwareMode
 import org.apache.kafka.common.protocol.SecurityProtocol
 
-import scala.util.Try
+import util.Try
 
 /**
  * Kafka topic configuration companion object.
@@ -103,7 +103,7 @@ object KafkaTopicStatus {
    */
   case class Exists() extends Status {
     override def toString: String = {
-      "exists"
+      com.gruchalski.kafka.java8.KafkaTopicStatus.Exists
     }
   }
 
@@ -112,7 +112,7 @@ object KafkaTopicStatus {
    */
   case class DoesNotExist() extends Status {
     override def toString: String = {
-      "doesnotexist"
+      com.gruchalski.kafka.java8.KafkaTopicStatus.DoesNotExist
     }
   }
 }

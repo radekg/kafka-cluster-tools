@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Rad Gruchalski
+ * Copyright 2017 Radek Gruchalski
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,14 +14,13 @@
  * limitations under the License.
  */
 
-package com.gruchalski.kafka
+package com.gruchalski.kafka.scala
 
 import org.apache.kafka.clients.consumer.{ConsumerRecord, KafkaConsumer}
 import org.apache.kafka.clients.producer.{Callback, RecordMetadata}
 
-import scala.collection.mutable.{HashMap ⇒ MHashMap}
-import scala.concurrent.{Future, Promise}
-import scala.util.Try
+import concurrent.{Future, Promise}
+import util.Try
 
 case class ProducerCallback() extends Callback {
   private val p = Promise[RecordMetadata]()
@@ -41,7 +40,7 @@ case class ConsumerWork(
     consumer: KafkaConsumer[Array[Byte], Array[Byte]]
 )(callback: (Either[Throwable, List[ConsumerRecord[Array[Byte], Array[Byte]]]]) ⇒ Unit) extends Runnable {
   override def run(): Unit = {
-    import scala.collection.JavaConverters._
+    import collection.JavaConverters._
     callback.apply(Try(consumer.poll(pollTimeout).asScala.toList).toEither)
   }
 }

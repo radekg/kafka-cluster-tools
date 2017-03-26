@@ -14,24 +14,18 @@
  * limitations under the License.
  */
 
-package com.gruchalski.utils
+package com.gruchalski.kafka.java8;
 
-/**
- * String extensions.
- */
-object StringImplicits {
+import org.apache.kafka.clients.producer.RecordMetadata;
 
-  /**
-   * String implicits.
-   * @param string a string
-   */
-  implicit class StringExtensions(val string: String) {
+import java.util.concurrent.CompletableFuture;
 
-    /**
-     * Remove leading and trailing quotes, if any.
-     * @return a string without leading and trailing quotes
-     */
-    def unquoted(): String = string.replaceAll("^\"|\"$", "")
-  }
-
+public class ProducerCallback {
+    public final com.gruchalski.kafka.scala.ProducerCallback callback;
+    public ProducerCallback() {
+        callback = new com.gruchalski.kafka.scala.ProducerCallback();
+    }
+    public CompletableFuture<RecordMetadata> result() {
+        return scala.compat.java8.FutureConverters.toJava(callback.result()).toCompletableFuture();
+    }
 }

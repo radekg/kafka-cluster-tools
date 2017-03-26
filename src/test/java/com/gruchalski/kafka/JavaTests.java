@@ -1,7 +1,27 @@
+/*
+ * Copyright 2017 Radek Gruchalski
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.gruchalski.kafka;
 
-import com.gruchalski.kafka.java8compat.KafkaCluster;
-import com.gruchalski.kafka.java8compat.KafkaClusterSafe;
+import com.gruchalski.kafka.java8.KafkaCluster;
+import com.gruchalski.kafka.java8.KafkaClusterSafe;
+import com.gruchalski.kafka.java8.KafkaTopicStatus;
+import com.gruchalski.kafka.scala.KafkaTopicConfiguration;
+import com.gruchalski.kafka.scala.KafkaTopicCreateResult;
+import com.gruchalski.kafka.serializer.java8.ConcreteJavaMessageImplementation;
 import junit.framework.TestCase;
 
 import java.util.ArrayList;
@@ -9,7 +29,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
@@ -36,7 +55,7 @@ public class JavaTests extends TestCase {
                 CompletableFuture<List<KafkaTopicCreateResult>> topicCreateStatuses = kafkaClusterSafe.cluster.withTopics(topics);
                 topicCreateStatuses.thenAccept(results -> {
                     for (KafkaTopicCreateResult result : results) {
-                        if (result.status().toString().equals("exists")) {
+                        if (result.status().toString().equals(KafkaTopicStatus.Exists)) {
                             latch.countDown();
                         } else {
                             fail("Expected topic " + result.topicConfig().name() + " to be created.");
@@ -46,6 +65,22 @@ public class JavaTests extends TestCase {
 
                 try {
                     latch.await(10000, TimeUnit.MILLISECONDS);
+                } catch (InterruptedException ex) {
+                    fail(ex.getMessage());
+                }
+
+                com.gruchalski.kafka.java8.ProducerCallback callback = new com.gruchalski.kafka.java8.ProducerCallback();
+                kafkaClusterSafe.cluster.produce(
+                        topics.get(0).name(),
+                        new ConcreteJavaMessageImplementation(),
+                        callback);
+
+                CountDownLatch producerLatch = new CountDownLatch(1);
+                callback.result().thenAccept(result -> {
+                   producerLatch.countDown();
+                });
+                try {
+                    producerLatch.await(10000, TimeUnit.MILLISECONDS);
                 } catch (InterruptedException ex) {
                     fail(ex.getMessage());
                 }

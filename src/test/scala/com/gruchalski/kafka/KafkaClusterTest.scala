@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Rad Gruchalski
+ * Copyright 2017 Radek Gruchalski
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,20 +16,21 @@
 
 package com.gruchalski.kafka
 
-import com.gruchalski.kafka.serializer.TestConcreteProvider
+import com.gruchalski.kafka.scala.{ConsumedItem, KafkaCluster, KafkaTopicCreateResult, KafkaTopicStatus}
+import com.gruchalski.kafka.serializer.scala.TestConcreteProvider
 import org.apache.kafka.clients.producer.RecordMetadata
 import org.scalatest.concurrent.Eventually
 import org.scalatest.time.{Milliseconds, Second, Seconds, Span}
 import org.scalatest.{Inside, Matchers, WordSpec}
 
-import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success}
+import concurrent.{ExecutionContext, Future}
+import util.{Failure, Success}
 
 class KafkaClusterTest extends WordSpec with Matchers with Eventually with Inside {
 
   override implicit val patienceConfig = PatienceConfig(timeout = scaled(Span(10, Seconds)), interval = scaled(Span(100, Milliseconds)))
 
-  implicit val ec: ExecutionContext = scala.concurrent.ExecutionContext.Implicits.global
+  implicit val ec: ExecutionContext = _root_.scala.concurrent.ExecutionContext.Implicits.global
 
   "The MessagePack serialization" must {
     "serialize and deserialize" when {

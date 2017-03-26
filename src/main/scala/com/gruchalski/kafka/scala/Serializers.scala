@@ -14,24 +14,23 @@
  * limitations under the License.
  */
 
-package com.gruchalski.utils
+package com.gruchalski.kafka.scala
+
+import org.apache.kafka.common.serialization.{Deserializer, Serializer}
 
 /**
- * String extensions.
+ * Serializer provider.
+ * @tparam ST type of the item handled by this serializer
  */
-object StringImplicits {
+trait SerializerProvider[ST] { t: ST ⇒
+  def serializer(): Serializer[ST]
+}
 
-  /**
-   * String implicits.
-   * @param string a string
-   */
-  implicit class StringExtensions(val string: String) {
-
-    /**
-     * Remove leading and trailing quotes, if any.
-     * @return a string without leading and trailing quotes
-     */
-    def unquoted(): String = string.replaceAll("^\"|\"$", "")
-  }
-
+/**
+ * Deserializer provider.
+ * @tparam DST type of the item handled by this deserializer
+ */
+trait DeserializerProvider[DST] { t: DST ⇒
+  type DeserializerType
+  def deserializer(): Deserializer[DST]
 }

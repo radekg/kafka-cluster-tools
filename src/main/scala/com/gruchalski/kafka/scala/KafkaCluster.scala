@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Rad Gruchalski
+ * Copyright 2017 Radek Gruchalski
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,10 +14,11 @@
  * limitations under the License.
  */
 
-package com.gruchalski.kafka
+package com.gruchalski.kafka.scala
 
 import java.util.concurrent.{ConcurrentLinkedDeque, ExecutorService, Executors}
 
+import com.gruchalski.kafka._
 import com.typesafe.config.{Config, ConfigFactory}
 import kafka.admin.AdminUtils
 import kafka.server.{KafkaConfig, KafkaServer}
@@ -27,9 +28,9 @@ import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord, RecordM
 import org.apache.kafka.common.network.ListenerName
 import org.apache.kafka.common.serialization.{ByteArraySerializer, Deserializer}
 
-import scala.collection.mutable.{HashMap ⇒ MHashMap}
-import scala.concurrent.{ExecutionContext, Future}
-import scala.util.Try
+import collection.mutable.{HashMap ⇒ MHashMap}
+import concurrent.{ExecutionContext, Future}
+import util.Try
 
 /**
  * Representation of a successfully started cluster. A cluster instance wrapped in this object is safe to use
@@ -39,8 +40,9 @@ import scala.util.Try
  */
 case class KafkaClusterSafe(cluster: KafkaCluster, configuration: Configuration)
 
-class KafkaCluster()(implicit config: Config,
-                     ec: ExecutionContext) {
+class KafkaCluster()(implicit
+  config: Config,
+    ec: ExecutionContext) {
 
   private val configuration = Configuration(config)
   private val zooKeeper = EmbeddedZooKeeper(configuration)
@@ -235,9 +237,8 @@ class KafkaCluster()(implicit config: Config,
           consumer = Some(_consumer)
           schedulePoll()
         }
-
-        import scala.collection.JavaConverters._
         if (!outQueues.contains(topic)) {
+          import collection.JavaConverters._
           outQueues.put(topic, new ConcurrentLinkedDeque[ConsumerRecord[Array[Byte], Array[Byte]]]())
           consumer.foreach(_.subscribe(List(topic).asJava))
         }
@@ -297,8 +298,9 @@ object KafkaCluster {
 
   type OutQueue = ConcurrentLinkedDeque[ConsumerRecord[Array[Byte], Array[Byte]]]
 
-  def apply()(implicit ec: ExecutionContext = scala.concurrent.ExecutionContext.Implicits.global,
-              config: Config = ConfigFactory.load().resolve()) =
+  def apply()(implicit
+    ec: ExecutionContext = concurrent.ExecutionContext.Implicits.global,
+    config: Config = ConfigFactory.load().resolve()) =
     new KafkaCluster()(config, ec)
 
 }

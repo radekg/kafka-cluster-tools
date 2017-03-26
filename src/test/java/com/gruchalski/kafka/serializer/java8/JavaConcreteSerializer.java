@@ -14,24 +14,20 @@
  * limitations under the License.
  */
 
-package com.gruchalski.utils
+package com.gruchalski.kafka.serializer.java8;
 
-/**
- * String extensions.
- */
-object StringImplicits {
+import org.apache.kafka.common.serialization.Serializer;
+import org.msgpack.core.MessageBufferPacker;
+import org.msgpack.core.MessagePack;
 
-  /**
-   * String implicits.
-   * @param string a string
-   */
-  implicit class StringExtensions(val string: String) {
+import java.util.Map;
 
-    /**
-     * Remove leading and trailing quotes, if any.
-     * @return a string without leading and trailing quotes
-     */
-    def unquoted(): String = string.replaceAll("^\"|\"$", "")
-  }
-
+public class JavaConcreteSerializer<T extends JavaConcreteMessageType> implements Serializer<T> {
+    public void configure(Map<String, ?> var1, boolean var2) {}
+    public void close() {}
+    public byte[] serialize(String topic, T input) {
+        MessageBufferPacker packer = MessagePack.newDefaultBufferPacker();
+        // TODO: implement
+        return packer.toByteArray();
+    }
 }
