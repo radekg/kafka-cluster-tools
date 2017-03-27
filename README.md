@@ -16,14 +16,14 @@ by the concrete implementation of the messages.
     
 ## Use with SBT
 
-    libraryDependencies += "com.gruchalski" %% "kafka-cluster-tools" % "1.0.0" % "test"
+    libraryDependencies += "com.gruchalski" %% "kafka-cluster-tools" % "1.1.0" % "test"
 
 ## Use with Maven
 
     <dependency>
         <groupId>com.gruchalski</groupId>
         <artifactId>kafka-cluster-tools</artifactId>
-        <version>1.0.0</version>
+        <version>1.1.0</version>
         <scope>test</scope>
     </dependency>
 
