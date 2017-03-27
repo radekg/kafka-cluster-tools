@@ -2,10 +2,10 @@
 
 An opinionated set of tools for working with Kafka in unit tests.  
 
-Primararly targeted at Scala 2.12 but comes with a Java 8 compatibility API.  
+Primarily targeted at Scala 2.12 but comes with a Java 8 compatibility API.  
 
 The library handles serialization and deserialization on its own, outside of Kafka. It uses `Array[Byte]` for key
-and value serializaers / deserializers under the hood. Serializers and deserializers are provided to the library
+and value serializers / deserializers under the hood. Serializers and deserializers are provided to the library
 by the concrete implementation of the messages.
 
 ## Build
