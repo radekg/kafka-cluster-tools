@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.gruchalski.kafka.serializer.java8.concrete;
+package com.gruchalski.kafka.test.serializer.java8.concrete;
 
 import com.gruchalski.kafka.scala.DeserializerProvider;
 import com.gruchalski.kafka.scala.SerializerProvider;

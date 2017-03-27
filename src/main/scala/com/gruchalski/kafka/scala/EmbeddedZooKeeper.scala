@@ -16,6 +16,7 @@
 
 package com.gruchalski.kafka.scala
 
+import com.typesafe.scalalogging.Logger
 import org.apache.curator.test.{InstanceSpec, TestingCluster}
 
 import scala.util.Try
@@ -35,6 +36,7 @@ object EmbeddedZooKeeper {
  */
 class EmbeddedZooKeeper(configuration: Configuration) {
 
+  private val logger = Logger(getClass)
   private var cluster: Option[TestingCluster] = None
 
   /**
@@ -43,14 +45,17 @@ class EmbeddedZooKeeper(configuration: Configuration) {
    */
   def start(): Option[EmbeddedZooKeeper.EmbeddedZooKeeperData] = {
     import collection.JavaConverters._
+    logger.info(s"Attempting starting a ZooKeeper cluster of ${configuration.`com.gruchalski.zookeeper.server.ensemble-size`} machines...")
     cluster match {
       case Some(_cluster) ⇒
+        logger.warn("Cluster is already running.")
         Some(EmbeddedZooKeeper.EmbeddedZooKeeperData(_cluster.getInstances.asScala.toList, _cluster.getConnectString))
       case None ⇒
         Try {
           val _cluster = new TestingCluster(configuration.`com.gruchalski.zookeeper.server.ensemble-size`)
           _cluster.start()
           cluster = Some(_cluster)
+          logger.info("Cluster is now running.")
           Some(EmbeddedZooKeeper.EmbeddedZooKeeperData(_cluster.getInstances.asScala.toList, _cluster.getConnectString))
         }.getOrElse(None)
     }
@@ -60,7 +65,9 @@ class EmbeddedZooKeeper(configuration: Configuration) {
    * Stop cluster, if running.
    */
   def stop(): Unit = {
+    logger.info("Requesting ZooKeeper cluster to stop.")
     cluster.foreach(_.stop())
+    logger.info("ZooKeeper cluster is stopped.")
   }
 
 }

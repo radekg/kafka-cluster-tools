@@ -16,9 +16,11 @@
 
 package com.gruchalski.kafka.scala
 
+import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
 import java.util.concurrent.{ConcurrentLinkedDeque, ExecutorService, Executors}
 
-import com.typesafe.config.{Config, ConfigFactory}
+import com.typesafe.config.{Config, ConfigFactory, ConfigValueFactory}
+import com.typesafe.scalalogging.Logger
 import kafka.admin.AdminUtils
 import kafka.server.{KafkaConfig, KafkaServer}
 import kafka.utils.{MockTime, TestUtils}
@@ -43,6 +45,8 @@ class KafkaCluster()(implicit
   config: Config,
     ec: ExecutionContext) {
 
+  private val logger = Logger(getClass)
+
   private val configuration = Configuration(config)
   private val zooKeeper = EmbeddedZooKeeper(configuration)
   private var kafkaServers = List.empty[KafkaServer]
@@ -50,6 +54,7 @@ class KafkaCluster()(implicit
 
   private var producer: Option[KafkaProducer[Array[Byte], Array[Byte]]] = None
   private var consumer: Option[KafkaConsumer[Array[Byte], Array[Byte]]] = None
+  private val consumerInitialized = new AtomicBoolean(false)
 
   private var outQueues = MHashMap.empty[String, KafkaCluster.OutQueue]
 
@@ -60,9 +65,11 @@ class KafkaCluster()(implicit
    * @return safe to use cluster data
    */
   def start(): Option[KafkaClusterSafe] = {
+    logger.info("Attempting starting Kafka Cluster...")
     if (kafkaServers.length == 0) {
       zooKeeper.start() match {
         case Some(EmbeddedZooKeeper.EmbeddedZooKeeperData(instances, connectionString)) ⇒
+          logger.info(s"Requesting ${configuration.`com.gruchalski.kafka.cluster.size`} Kafka brokers...")
           kafkaServers = TestUtils.createBrokerConfigs(
             configuration.`com.gruchalski.kafka.cluster.size`,
             connectionString,
@@ -88,15 +95,22 @@ class KafkaCluster()(implicit
               }.getOrElse(None)
             }.toList.flatten
           if (kafkaServers.length != configuration.`com.gruchalski.kafka.cluster.size`) {
+            logger.error(s"Only ${kafkaServers.length} Kafka brokers came up successfully. Kafka is now going to stop.")
             // not all servers started, we shouldn't continue:
             stop()
+            logger.error("Kafka is not running.")
+            None
+          } else {
+            executor = Some(Executors.newSingleThreadExecutor())
+            logger.info("Kafka cluster is now running.")
+            Some(KafkaClusterSafe(this, configuration))
           }
-          executor = Some(Executors.newSingleThreadExecutor())
-          Some(KafkaClusterSafe(this, configuration))
         case None ⇒
+          logger.error("ZooKeeper has not started. Kafka cluster will not attempting its start.")
           None
       }
     } else {
+      logger.warn("Kafka cluster is already running.")
       Some(KafkaClusterSafe(this, configuration))
     }
   }
@@ -105,6 +119,7 @@ class KafkaCluster()(implicit
    * Stop the cluster, if running.
    */
   def stop(): Unit = {
+    logger.info("Kafka cluster stop requested, stopping all components...")
     executor.foreach(_.shutdownNow())
     producer.foreach(_.close())
     consumer.foreach { c ⇒ Try(c.close()) }
@@ -115,7 +130,8 @@ class KafkaCluster()(implicit
     executor = None
     outQueues.clear()
     kafkaServers = List.empty[KafkaServer]
-    // TODO: log, yeah, but consider creating a new instance...
+    consumerInitialized.set(false)
+    logger.info("All components stopped. Please consider not reusing this instance.")
   }
 
   /**
@@ -130,6 +146,7 @@ class KafkaCluster()(implicit
       case Some(kafkaServer) ⇒
         topicConfigs.map { topicConfig ⇒
 
+          logger.info(s"Attempting creating topic ${topicConfig.name} with partitions: ${topicConfig.partitions}...")
           Try {
             AdminUtils.createTopic(
               kafkaServer.zkUtils,
@@ -150,17 +167,23 @@ class KafkaCluster()(implicit
                 }
                 timeout = System.currentTimeMillis() - start >= configuration.`com.gruchalski.kafka.topic-wait-for-create-success-timeout-ms`
               }
+              if (timeout) {
+                logger.error(s"Creating topic ${topicConfig.name} timed out. Considered not created!")
+              }
               KafkaTopicCreateResult(topicConfig, status)
             }
           }.toEither match {
             case Left(error) ⇒
+              logger.error(s"Topic ${topicConfig.name} not created. Reason: $error.")
               Future(KafkaTopicCreateResult(topicConfig, KafkaTopicStatus.DoesNotExist(), Some(error)))
             case Right(result) ⇒
+              logger.info(s"Topic ${topicConfig.name} created sucessfully.")
               result
           }
 
         }
       case None ⇒
+        logger.error("No Kafka servers available in the cluster for topic creation.")
         List.empty[Future[KafkaTopicCreateResult]]
     }
   }
@@ -173,42 +196,47 @@ class KafkaCluster()(implicit
    * @tparam T type of the value to send
    * @return the metadata / error future
    */
-  def produce[T](topic: String, value: SerializerProvider[T], callback: ProducerCallback = ProducerCallback()): Option[Future[RecordMetadata]] = {
+  def produce[T](topic: String, value: SerializerProvider[T], callback: ProducerCallback = ProducerCallback()): Try[Option[Future[RecordMetadata]]] = {
     produce(topic, None, value, callback)
   }
 
-  def produce[T](topic: String, key: Option[Array[Byte]], value: SerializerProvider[T], callback: ProducerCallback): Option[Future[RecordMetadata]] = {
+  def produce[T](topic: String, key: Option[Array[Byte]], value: SerializerProvider[T], callback: ProducerCallback): Try[Option[Future[RecordMetadata]]] = {
     kafkaServers.headOption match {
       case Some(kafkaServer) ⇒
-        if (producer == None) {
-          producer = Some(TestUtils.createNewProducer[Array[Byte], Array[Byte]](
-            brokerList = bootstrapServers().mkString(","),
-            acks = configuration.`com.gruchalski.kafka.producer.acks`,
-            maxBlockMs = configuration.`com.gruchalski.kafka.producer.max-block-ms`,
-            bufferSize = configuration.`com.gruchalski.kafka.producer.buffer-size`,
-            retries = configuration.`com.gruchalski.kafka.producer.retries`,
-            lingerMs = configuration.`com.gruchalski.kafka.producer.linger-ms`,
-            requestTimeoutMs = configuration.`com.gruchalski.kafka.producer.request-timeout-ms`,
-            securityProtocol = configuration.`com.gruchalski.kafka.producer.security-protocol`,
-            props = Some(configuration.`com.gruchalski.kafka.producer.props`),
-            keySerializer = new ByteArraySerializer,
-            valueSerializer = new ByteArraySerializer
-          ))
+        Try {
+          if (producer == None) {
+            logger.info("No producer found. Creating one...")
+            producer = Some(TestUtils.createNewProducer[Array[Byte], Array[Byte]](
+              brokerList = bootstrapServers().mkString(","),
+              acks = configuration.`com.gruchalski.kafka.producer.acks`,
+              maxBlockMs = configuration.`com.gruchalski.kafka.producer.max-block-ms`,
+              bufferSize = configuration.`com.gruchalski.kafka.producer.buffer-size`,
+              retries = configuration.`com.gruchalski.kafka.producer.retries`,
+              lingerMs = configuration.`com.gruchalski.kafka.producer.linger-ms`,
+              requestTimeoutMs = configuration.`com.gruchalski.kafka.producer.request-timeout-ms`,
+              securityProtocol = configuration.`com.gruchalski.kafka.producer.security-protocol`,
+              props = Some(configuration.`com.gruchalski.kafka.producer.props`),
+              keySerializer = new ByteArraySerializer,
+              valueSerializer = new ByteArraySerializer
+            ))
+            logger.info("Producer is now ready.")
+          }
+          producer.foreach { p ⇒
+            p.send(
+              key match {
+                case Some(keyData) ⇒
+                  new ProducerRecord(topic, keyData, value.serializer().serialize(topic, value.asInstanceOf[T]))
+                case None ⇒
+                  new ProducerRecord(topic, value.serializer().serialize(topic, value.asInstanceOf[T]))
+              },
+              callback
+            )
+          }
+          Some(callback.result())
         }
-        producer.foreach { p ⇒
-          p.send(
-            key match {
-              case Some(keyData) ⇒
-                new ProducerRecord(topic, keyData, value.serializer().serialize(topic, value.asInstanceOf[T]))
-              case None ⇒
-                new ProducerRecord(topic, value.serializer().serialize(topic, value.asInstanceOf[T]))
-            },
-            callback
-          )
-        }
-        Some(callback.result())
       case None ⇒
-        None
+        logger.error("No Kafka servers available in the cluster for publishing.")
+        Try(None)
     }
   }
 
@@ -219,38 +247,50 @@ class KafkaCluster()(implicit
    * @tparam T type of the message to consume
    * @return a consumed object, if available at the time of the call
    */
-  def consume[T <: DeserializerProvider[_]](topic: String)(implicit deserializer: Deserializer[T]): Option[ConsumedItem[T]] = {
+  def consume[T <: DeserializerProvider[_]](topic: String)(implicit deserializer: Deserializer[T]): Try[Option[ConsumedItem[T]]] = {
     kafkaServers.headOption match {
       case Some(kafkaServer) ⇒
+        Try {
+          if (consumer == None) {
+            logger.info("No consumer found. Creating one...")
+            val _consumer = TestUtils.createNewConsumer(
+              brokerList = bootstrapServers().mkString(","),
+              groupId = configuration.`com.gruchalski.kafka.consumer.group-id`,
+              autoOffsetReset = configuration.`com.gruchalski.kafka.consumer.auto-offset-reset`,
+              partitionFetchSize = configuration.`com.gruchalski.kafka.consumer.partition-fetch-size`,
+              sessionTimeout = configuration.`com.gruchalski.kafka.consumer.session-timeout`,
+              securityProtocol = configuration.`com.gruchalski.kafka.consumer.security-protocol`,
+              props = Some(configuration.`com.gruchalski.kafka.consumer.props`)
+            )
+            logger.info("Consumer is now ready.")
+            consumer = Some(_consumer)
+          }
+          if (!outQueues.contains(topic)) {
+            consumer.foreach { c ⇒
+              if (c.listTopics().containsKey(topic)) {
+                import collection.JavaConverters._
+                if (consumerInitialized.get() == false) {
+                  schedulePoll()
+                  consumerInitialized.set(true)
+                }
+                outQueues.put(topic, new ConcurrentLinkedDeque[ConsumerRecord[Array[Byte], Array[Byte]]]())
+                c.subscribe(List(topic).asJava)
+              } else {
+                throw new NoTopicException(topic)
+              }
+            }
+          }
 
-        if (consumer == None) {
-          val _consumer = TestUtils.createNewConsumer(
-            brokerList = bootstrapServers().mkString(","),
-            groupId = configuration.`com.gruchalski.kafka.consumer.group-id`,
-            autoOffsetReset = configuration.`com.gruchalski.kafka.consumer.auto-offset-reset`,
-            partitionFetchSize = configuration.`com.gruchalski.kafka.consumer.partition-fetch-size`,
-            sessionTimeout = configuration.`com.gruchalski.kafka.consumer.session-timeout`,
-            securityProtocol = configuration.`com.gruchalski.kafka.consumer.security-protocol`,
-            props = Some(configuration.`com.gruchalski.kafka.consumer.props`)
-          )
-          consumer = Some(_consumer)
-          schedulePoll()
+          Option(outQueues.getOrElseUpdate(topic, new ConcurrentLinkedDeque[ConsumerRecord[Array[Byte], Array[Byte]]]()).poll()) match {
+            case Some(record) ⇒
+              Some(ConsumedItem(deserializer.deserialize(topic, record.value()), record))
+            case None ⇒
+              None
+          }
         }
-        if (!outQueues.contains(topic)) {
-          import collection.JavaConverters._
-          outQueues.put(topic, new ConcurrentLinkedDeque[ConsumerRecord[Array[Byte], Array[Byte]]]())
-          consumer.foreach(_.subscribe(List(topic).asJava))
-        }
-
-        Option(outQueues.getOrElseUpdate(topic, new ConcurrentLinkedDeque[ConsumerRecord[Array[Byte], Array[Byte]]]()).poll()) match {
-          case Some(record) ⇒
-            Some(ConsumedItem(deserializer.deserialize(topic, record.value()), record))
-          case None ⇒
-            None
-        }
-
       case None ⇒
-        None
+        logger.error("No Kafka servers available in the cluster for consumption.")
+        Try(None)
     }
   }
 
@@ -278,7 +318,7 @@ class KafkaCluster()(implicit
     executor.submit(ConsumerWork(configuration.`com.gruchalski.kafka.consumer.poll-timeout-ms`, consumer) { result ⇒
       result match {
         case Left(error) ⇒
-        // TODO: log the error
+          logger.error(s"Error while polling for messages. Reason: $error.")
         case Right(records) ⇒
           records.foreach { record ⇒
             outQueues.get(record.topic).foreach(_.offer(record))

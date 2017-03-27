@@ -98,8 +98,16 @@ public class KafkaCluster {
      * @tparam <T> type of the value to send
      * @return the metadata / error future
      */
-    public <T> Optional<CompletableFuture<RecordMetadata>> produce(String topic, SerializerProvider<T> value, ProducerCallback callback) {
-        Optional<scala.concurrent.Future<RecordMetadata>> optional = ScalaCompat.fromScala(cluster.produce(topic, value, callback.callback));
+    public <T> Optional<CompletableFuture<RecordMetadata>> produce(String topic, SerializerProvider<T> value, com.gruchalski.kafka.java8.ProducerCallback callback)
+    throws Throwable {
+        // left is an error:
+        scala.util.Try<scala.Option<scala.concurrent.Future<RecordMetadata>>> _try = cluster.produce(topic, value, callback.callback);
+        scala.util.Either<Throwable, scala.Option<scala.concurrent.Future<RecordMetadata>>> _either = _try.toEither();
+        if (_either.isLeft()) {
+            throw _either.left().get();
+        }
+        // well, else if right...
+        Optional<scala.concurrent.Future<RecordMetadata>> optional = ScalaCompat.fromScala(_either.right().get());
         if (optional.isPresent()) {
             return Optional.ofNullable(ScalaCompat.fromScala(optional.get()));
         } else {
@@ -114,7 +122,13 @@ public class KafkaCluster {
      * @tparam <T> type of the message to consume
      * @return a consumed object, if available at the time of the call
      */
-    public <T extends DeserializerProvider<?>> Optional<ConsumedItem<T>> consume(String topic, Deserializer<T> deserializer) {
-        return ScalaCompat.fromScala(cluster.consume(topic, deserializer));
+    public <T extends DeserializerProvider<?>> Optional<ConsumedItem<T>> consume(String topic, Deserializer<T> deserializer)
+    throws Throwable {
+        scala.util.Try<scala.Option<ConsumedItem<T>>> _try = cluster.consume(topic, deserializer);
+        scala.util.Either<Throwable, scala.Option<ConsumedItem<T>>> _either = _try.toEither();
+        if (_either.isLeft()) {
+            throw _either.left().get();
+        }
+        return ScalaCompat.fromScala(_either.right().get());
     }
 }
