@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.gruchalski.kafka.serializer.scala
+package com.gruchalski.kafka.test.serializer.scala
 
 import com.gruchalski.kafka.scala.{DeserializerProvider, SerializerProvider}
 import org.apache.kafka.common.serialization.{Deserializer, Serializer}
@@ -27,14 +27,22 @@ class TestConcreteSerializer[T <: TestConcreteProvider.TestConcrete] extends Ser
   override def close(): Unit = {}
   override def serialize(topic: String, input: T): Array[Byte] = {
     val packer = MessagePack.newDefaultBufferPacker()
-    input match { // exhaustive pattern match:
-      case item: TestConcreteProvider.ConcreteExample ⇒
-        packer
-          .packInt(item.id)
-          .packInt(1)
-          // actual data:
-          .packString(item.property)
-        packer.toByteArray
+    try {
+      input match {
+        // exhaustive pattern match:
+        case item: TestConcreteProvider.ConcreteExample ⇒
+          packer
+            .packInt(item.id)
+            .packInt(1)
+            // actual data:
+            .packString(item.property)
+          packer.toByteArray
+      }
+    } catch {
+      case any: Throwable ⇒
+        null
+    } finally {
+      Try(packer.close())
     }
   }
 }
@@ -76,7 +84,6 @@ object TestConcreteProvider {
     override val id = types.get(ConcreteExample.getClass) match {
       case Some(value) ⇒ value
       case None ⇒
-        // TODO: declare
         throw new Exception(s"Serialization error: serialization type ID not found for class ${getClass} in $types.")
     }
     def serializer() = new TestConcreteSerializer()

@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-package com.gruchalski.kafka.serializer.java8;
+package com.gruchalski.kafka.test.serializer.java8.concrete;
 
-public interface IdProvider {
-    int id();
+import com.gruchalski.kafka.test.serializer.java8.IdProvider;
+
+public abstract class JavaConcreteMessageType implements IdProvider {
 }

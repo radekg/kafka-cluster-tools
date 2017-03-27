@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-package com.gruchalski.kafka
+package com.gruchalski.kafka.test
 
 import com.gruchalski.kafka.scala.{ConsumedItem, KafkaCluster, KafkaTopicCreateResult, KafkaTopicStatus}
-import com.gruchalski.kafka.serializer.scala.TestConcreteProvider
+import com.gruchalski.kafka.test.serializer.scala.TestConcreteProvider
 import org.apache.kafka.clients.producer.RecordMetadata
 import org.scalatest.concurrent.Eventually
 import org.scalatest.time.{Milliseconds, Seconds, Span}
@@ -45,6 +45,7 @@ class KafkaClusterTest extends WordSpec with Matchers with Eventually with Insid
   }
 
   "Kafka cluster" must {
+
     "start, create topics and stop" when {
 
       "requested to start" in {
@@ -98,12 +99,15 @@ class KafkaClusterTest extends WordSpec with Matchers with Eventually with Insid
 
             // should be able to publish:
             var receivedMetadata: Option[RecordMetadata] = None
-            safe.cluster.produce(topicToUse, concreteToUse).foreach { f ⇒
-              f.onComplete {
-                case Success(metadata) ⇒ receivedMetadata = Some(metadata)
-                case Failure(ex)       ⇒ fail(ex)
+            safe.cluster.produce(topicToUse, concreteToUse).foreach { opt ⇒
+              opt.foreach { f ⇒
+                f.onComplete {
+                  case Success(metadata) ⇒ receivedMetadata = Some(metadata)
+                  case Failure(ex)       ⇒ fail(ex)
+                }
               }
             }
+
             eventually {
               receivedMetadata should matchPattern { case Some(_) ⇒ }
             }
@@ -112,7 +116,7 @@ class KafkaClusterTest extends WordSpec with Matchers with Eventually with Insid
             implicit val concreteDeserializer = concreteToUse.deserializer()
             eventually {
               val consumed = safe.cluster.consume[TestConcreteProvider.ConcreteExample](topicToUse)
-              consumed should matchPattern { case Some(ConsumedItem(concreteToUse, _)) ⇒ }
+              consumed.toEither should matchPattern { case Right(Some(ConsumedItem(concreteToUse, _))) ⇒ }
             }
 
           case None ⇒ fail("Expected Kafka cluster to come up.")
@@ -121,6 +125,7 @@ class KafkaClusterTest extends WordSpec with Matchers with Eventually with Insid
       }
 
     }
+
   }
 
 }

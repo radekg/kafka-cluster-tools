@@ -45,17 +45,19 @@ cluster.start() match {
         // to inspect the statuses of topic creation, look inside of statuses
         val topicToUse = "some-topic-created-in-the-previous-step"
         val concreteToUse = TestConcreteProvider.ConcreteExample(property = "full kafka publish / consume test")
-        safe.cluster.produce(topicToUse, concreteToUse).foreach { f ⇒
-          f.onComplete {
-            case Success(metadata) ⇒
-              // record has been published, we can try consuming;
-              // consuming may require subsequent tries because of the async nature of Kafka:
-              implicit val concreteDeserializer = concreteToUse.deserializer()
-              // you may have to allow for some time or use an approach similar to scalatest Eventually:
-              val consumed = safe.cluster.consume[TestConcreteProvider.ConcreteExample](topicToUse)
-              // when finished working with it, shut it all down:
-              safe.cluster.stop()
-            case Failure(ex)       ⇒ println(s"Failed to publish. Reason: $ex.")
+        safe.cluster.produce(topicToUse, concreteToUse).foreach { opt ⇒
+          opt.foreach { f ⇒
+            f.onComplete {
+              case Success(metadata) ⇒
+                // record has been published, we can try consuming;
+                // consuming may require subsequent tries because of the async nature of Kafka:
+                implicit val concreteDeserializer = concreteToUse.deserializer()
+                // you may have to allow for some time or use an approach similar to scalatest Eventually:
+                val consumed = safe.cluster.consume[TestConcreteProvider.ConcreteExample](topicToUse)
+                // when finished working with it, shut it all down:
+                safe.cluster.stop()
+              case Failure(ex)       ⇒ println(s"Failed to publish. Reason: $ex.")
+            }
           }
         }
       case Failure(ex) ⇒
@@ -134,30 +136,41 @@ public class Playground {
                 // create a callback:
                 ProducerCallback callback = new ProducerCallback();
                 // produce the message:
-                kafkaClusterSafe.cluster.produce(
-                        topics.get(0).name(),
-                        concrete,
-                        callback);
-                // wait for the metadata or error:
-                CountDownLatch producerLatch = new CountDownLatch(1);
-                callback.result().thenAccept(result -> {
-                   producerLatch.countDown();
-                });
                 
                 try {
-                    producerLatch.await(10000, TimeUnit.MILLISECONDS);
-                } catch (InterruptedException ex) {
-                    System.out.println(ex.getMessage());
+                    kafkaClusterSafe.cluster.produce(
+                            topics.get(0).name(),
+                            concrete,
+                            callback);
+                    // wait for the metadata or error:
+                    CountDownLatch producerLatch = new CountDownLatch(1);
+                    callback.result().thenAccept(result -> {
+                       producerLatch.countDown();
+                    });
+                    
+                    try {
+                        producerLatch.await(10000, TimeUnit.MILLISECONDS);
+                    } catch (InterruptedException ex) {
+                        System.out.println(ex.getMessage());
+                        kafkaClusterSafe.cluster.stop();
+                        System.exit(1);
+                    }
+                    
+                    AsyncUtil.eventually(() -> {
+                        try {
+                            Optional<ConsumedItem<ConcreteJavaMessageImplementation>> consumed = kafkaClusterSafe.cluster.consume(topics.get(0).name(), concrete.deserializer());
+                            assertEquals(consumed.get().deserializedItem().property, concrete.property);
+                        } catch (Throwable t) {
+                            System.out.println("Expected while consuming: " + t.getMessage() + ".");
+                            kafkaClusterSafe.cluster.stop();
+                            System.exit(1);
+                        }
+                    });
+                } catch (Throwable t) {
+                    System.out.println("Error while publishing: " + t.getMessage() + ".");
+                } finally {
                     kafkaClusterSafe.cluster.stop();
-                    System.exit(1);
                 }
-                
-                AsyncUtil.eventually(() -> {
-                    Optional<ConsumedItem<ConcreteJavaMessageImplementation>> consumed = kafkaClusterSafe.cluster.consume(topics.get(0).name(), concrete.deserializer());
-                    assertEquals(consumed.get().deserializedItem().property, concrete.property);
-                });
-
-                kafkaClusterSafe.cluster.stop();
                 
             }
         });
@@ -167,17 +180,20 @@ public class Playground {
 
 ## Configuration
 
-TBA
+The configuration is documented in the `reference.conf` file. Please have a look inside. As this project uses
+Typesafe Config for configuration, the usual Typesafe Config rules apply. Especially:
 
-## Concrete messages
+- override full config with: `ConfigFactory.parseProperties(java.util.Properties)`
+- override parts of the config with:
 
-### Scala
-
-TBA
-
-### Java
-
-TBA
+```
+ConfigFactory.empty()
+  .withValue(..., ConfigValueFactory.fromAnyRef(...))
+  // ...
+  .withFallback(
+    ConfigFactory.load().resolve() // merge with the default reference.conf
+  )
+```
 
 ## License
 
@@ -192,4 +208,6 @@ you may not use this file except in compliance with the License. You may obtain 
 
 [http://www.apache.org/licenses/LICENSE-2.0](http://www.apache.org/licenses/LICENSE-2.0)
 
-Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
+Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for
+the specific language governing permissions and limitations under the License.

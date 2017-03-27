@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.gruchalski.kafka;
+package com.gruchalski.kafka.test;
 
 import com.gruchalski.kafka.java8.KafkaCluster;
 import com.gruchalski.kafka.java8.KafkaClusterSafe;
@@ -23,7 +23,7 @@ import com.gruchalski.kafka.java8.ProducerCallback;
 import com.gruchalski.kafka.scala.ConsumedItem;
 import com.gruchalski.kafka.scala.KafkaTopicConfiguration;
 import com.gruchalski.kafka.scala.KafkaTopicCreateResult;
-import com.gruchalski.kafka.serializer.java8.concrete.ConcreteJavaMessageImplementation;
+import com.gruchalski.kafka.test.serializer.java8.concrete.ConcreteJavaMessageImplementation;
 import com.gruchalski.testing.AsyncUtil;
 import junit.framework.TestCase;
 
@@ -81,28 +81,39 @@ public class JavaTests extends TestCase {
 
                 ConcreteJavaMessageImplementation concrete = new ConcreteJavaMessageImplementation("unit-test-concrete");
                 ProducerCallback callback = new ProducerCallback();
-                kafkaClusterSafe.cluster.produce(
-                        topics.get(0).name(),
-                        concrete,
-                        callback);
-
-                CountDownLatch producerLatch = new CountDownLatch(1);
-                callback.result().thenAccept(result -> {
-                   producerLatch.countDown();
-                });
 
                 try {
-                    producerLatch.await(10000, TimeUnit.MILLISECONDS);
-                } catch (InterruptedException ex) {
-                    fail(ex.getMessage());
+
+                    kafkaClusterSafe.cluster.produce(
+                            topics.get(0).name(),
+                            concrete,
+                            callback);
+
+                    CountDownLatch producerLatch = new CountDownLatch(1);
+                    callback.result().thenAccept(result -> {
+                        producerLatch.countDown();
+                    });
+
+                    try {
+                        producerLatch.await(10000, TimeUnit.MILLISECONDS);
+                    } catch (InterruptedException ex) {
+                        fail(ex.getMessage());
+                    }
+
+                    AsyncUtil.eventually(() -> {
+                        try {
+                            Optional<ConsumedItem<ConcreteJavaMessageImplementation>> consumed = kafkaClusterSafe.cluster.consume(topics.get(0).name(), concrete.deserializer());
+                            assertEquals(consumed.get().deserializedItem().property, concrete.property);
+                        } catch (Throwable t) {
+                            fail(t.getMessage());
+                        }
+                    });
+
+                } catch (Throwable t) {
+                    fail(t.getMessage());
+                } finally {
+                    kafkaClusterSafe.cluster.stop();
                 }
-
-                AsyncUtil.eventually(() -> {
-                    Optional<ConsumedItem<ConcreteJavaMessageImplementation>> consumed = kafkaClusterSafe.cluster.consume(topics.get(0).name(), concrete.deserializer());
-                    assertEquals(consumed.get().deserializedItem().property, concrete.property);
-                });
-
-                kafkaClusterSafe.cluster.stop();
             }
         });
     }
