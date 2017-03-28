@@ -183,16 +183,7 @@ ConfigFactory.empty()
 
 ### Scala
 
-Assume a case class:
-
-```scala
-sealed trait TestConcrete
-case class ConcreteExample(typeId: Int, property: String = "I am concrete") extends TestConcrete {
-  def typeId: Int = 1
-}
-```
-
-To create a serializer / deserializer, follow the example below:
+To create a serializer / deserializer for a case class, follow the example below:
 
 ```scala
 import org.apache.kafka.common.serialization.{Deserializer, Serializer}
@@ -263,7 +254,7 @@ val consumed = safe.cluster.consume[String, ConcreteExample]("topic")
 
 ### Java
 
-In Java, thi is a little bit more complicated because there is no way to take advantage of automatic class inference.
+In Java, this is a little bit more complicated because there is no way to take advantage of automatic type inference.
 
 First, a class we would like to serialize / deserialize:
 
@@ -358,9 +349,14 @@ public class Demo {
         return cluster.produce(
                 "topic",
                 "a key",
-                message).thenAccept(result -> {
-            // the message has been produced
+                message);
+        /*
+        Use:
+        CompletableFuture<RecordMetadata> f = produce(...)
+        f.thenAccept(result -> {
+          // the message has been produced
         });
+        */
     }
     
     public Optional<ConsumedItem<String, JavaMessage>> consume(KafkaCluster cluster) {
