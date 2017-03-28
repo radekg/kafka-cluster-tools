@@ -16,10 +16,10 @@
 
 package com.gruchalski.kafka.scala
 
-import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.{ConcurrentLinkedDeque, ExecutorService, Executors}
 
-import com.typesafe.config.{Config, ConfigFactory, ConfigValueFactory}
+import com.typesafe.config.{Config, ConfigFactory}
 import com.typesafe.scalalogging.Logger
 import kafka.admin.AdminUtils
 import kafka.server.{KafkaConfig, KafkaServer}
@@ -27,7 +27,7 @@ import kafka.utils.{MockTime, TestUtils}
 import org.apache.kafka.clients.consumer.{ConsumerRecord, KafkaConsumer}
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord, RecordMetadata}
 import org.apache.kafka.common.network.ListenerName
-import org.apache.kafka.common.serialization.{ByteArraySerializer, Deserializer}
+import org.apache.kafka.common.serialization.{ByteArraySerializer, Deserializer, Serializer}
 
 import scala.collection.mutable.{HashMap ⇒ MHashMap}
 import scala.concurrent.{ExecutionContext, Future}
@@ -44,6 +44,8 @@ case class KafkaClusterSafe(cluster: KafkaCluster, configuration: Configuration)
 class KafkaCluster()(implicit
   config: Config,
     ec: ExecutionContext) {
+
+  import DefaultSerdes._
 
   private val logger = Logger(getClass)
 
@@ -192,15 +194,23 @@ class KafkaCluster()(implicit
    * Produce a message of a given type. If the producer for the given type does not exist, it will be created.
    * @param topic topic to send the message to
    * @param value value to send
-   * @param callback callback handling metadata or error, the callback is used to return a scala future
-   * @tparam T type of the value to send
+   * @tparam V type of the value to send
    * @return the metadata / error future
    */
-  def produce[T](topic: String, value: SerializerProvider[T], callback: ProducerCallback = ProducerCallback()): Try[Option[Future[RecordMetadata]]] = {
-    produce(topic, None, value, callback)
+  implicit def produce[V](topic: String, value: V)(implicit serializer: Serializer[V]): Try[Future[RecordMetadata]] = {
+    produce[Array[Byte], V](topic, None, value)
   }
 
-  def produce[T](topic: String, key: Option[Array[Byte]], value: SerializerProvider[T], callback: ProducerCallback): Try[Option[Future[RecordMetadata]]] = {
+  /**
+   * Produce a message of a given type. If the producer for the given type does not exist, it will be created.
+   * @param topic topic to send the message to
+   * @param key key to send
+   * @param value value to send
+   * @tparam K type of the key to send
+   * @tparam V type of the value to send
+   * @return the metadata / error future
+   */
+  implicit def produce[K, V](topic: String, key: Option[K], value: V)(implicit keySerializer: Serializer[K], valueSerializer: Serializer[V]): Try[Future[RecordMetadata]] = {
     kafkaServers.headOption match {
       case Some(kafkaServer) ⇒
         Try {
@@ -221,33 +231,40 @@ class KafkaCluster()(implicit
             ))
             logger.info("Producer is now ready.")
           }
+          val callback = new ProducerCallback
           producer.foreach { p ⇒
             p.send(
               key match {
                 case Some(keyData) ⇒
-                  new ProducerRecord(topic, keyData, value.serializer().serialize(topic, value.asInstanceOf[T]))
+                  new ProducerRecord(topic, keySerializer.serialize(topic, keyData.asInstanceOf[K]), valueSerializer.serialize(topic, value.asInstanceOf[V]))
                 case None ⇒
-                  new ProducerRecord(topic, value.serializer().serialize(topic, value.asInstanceOf[T]))
+                  new ProducerRecord(topic, valueSerializer.serialize(topic, value.asInstanceOf[V]))
               },
               callback
             )
           }
-          Some(callback.result())
+          callback.result()
         }
       case None ⇒
         logger.error("No Kafka servers available in the cluster for publishing.")
-        Try(None)
+        Try(throw new NoServersToProduce)
     }
+  }
+
+  implicit def consume[V](topic: String)(implicit valueDeserializer: Deserializer[V]): Try[Option[ConsumedItem[Array[Byte], V]]] = {
+    consume[Array[Byte], V](topic)
   }
 
   /**
    * Consume a Kafka message from a given topic using given deserializer.
    * @param topic topic to consume from
-   * @param deserializer deserializer to handle the type of the message
-   * @tparam T type of the message to consume
+   * @param keyDeserializer deserializer to handle the key
+   * @param valueDeserializer deserializer to handle the value
+   * @tparam K type of the key to consume
+   * @tparam V type of the value to consume
    * @return a consumed object, if available at the time of the call
    */
-  def consume[T <: DeserializerProvider[_]](topic: String)(implicit deserializer: Deserializer[T]): Try[Option[ConsumedItem[T]]] = {
+  implicit def consume[K, V](topic: String)(implicit keyDeserializer: Deserializer[K], valueDeserializer: Deserializer[V]): Try[Option[ConsumedItem[K, V]]] = {
     kafkaServers.headOption match {
       case Some(kafkaServer) ⇒
         Try {
@@ -283,7 +300,13 @@ class KafkaCluster()(implicit
 
           Option(outQueues.getOrElseUpdate(topic, new ConcurrentLinkedDeque[ConsumerRecord[Array[Byte], Array[Byte]]]()).poll()) match {
             case Some(record) ⇒
-              Some(ConsumedItem(deserializer.deserialize(topic, record.value()), record))
+              Some(
+                ConsumedItem(
+                  Try(Option(keyDeserializer.deserialize(topic, record.key()))).getOrElse(None),
+                  valueDeserializer.deserialize(topic, record.value()),
+                  record
+                )
+              )
             case None ⇒
               None
           }

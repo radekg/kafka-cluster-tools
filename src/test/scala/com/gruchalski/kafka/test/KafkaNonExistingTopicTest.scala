@@ -16,13 +16,8 @@
 
 package com.gruchalski.kafka.test
 
-import java.io.File
-import java.util.Scanner
-
 import com.gruchalski.kafka.scala.{Configuration, KafkaCluster, KafkaTopicCreateResult, KafkaTopicStatus}
 import com.gruchalski.kafka.test.serializer.scala.TestConcreteProvider
-import com.typesafe.config.{Config, ConfigFactory}
-import org.apache.kafka.clients.producer.RecordMetadata
 import org.scalatest.concurrent.Eventually
 import org.scalatest.time.{Milliseconds, Seconds, Span}
 import org.scalatest.{BeforeAndAfterAll, Inside, Matchers, WordSpec}
@@ -70,7 +65,7 @@ class KafkaNonExistingTopicTest extends WordSpec with Matchers with Eventually w
     "gracefully handle errors" when {
 
       "a message is consumed from a non-existing topic" in {
-        implicit val deserializer = TestConcreteProvider.ConcreteExample().deserializer()
+        import com.gruchalski.kafka.test.serializer.scala.TestConcreteSerdes._
         cluster.consume[TestConcreteProvider.ConcreteExample](
           "non-existing-topic"
         ).toEither should matchPattern { case Left(_) ⇒ }

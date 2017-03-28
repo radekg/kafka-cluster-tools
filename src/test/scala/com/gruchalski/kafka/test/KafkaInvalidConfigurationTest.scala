@@ -17,7 +17,6 @@
 package com.gruchalski.kafka.test
 
 import java.io.File
-import java.util.Scanner
 
 import com.gruchalski.kafka.scala.{Configuration, KafkaCluster, KafkaTopicCreateResult, KafkaTopicStatus}
 import com.gruchalski.kafka.test.serializer.scala.TestConcreteProvider
@@ -69,6 +68,7 @@ class KafkaInvalidConfigurationTest extends WordSpec with Matchers with Eventual
     "gracefully handle errors" when {
 
       "invalid Kafka producer configuration is given" in {
+        import com.gruchalski.kafka.test.serializer.scala.TestConcreteSerdes._
         cluster.produce(
           clusterConfig.`com.gruchalski.kafka.topics`.head.get.name,
           TestConcreteProvider.ConcreteExample()
@@ -76,7 +76,7 @@ class KafkaInvalidConfigurationTest extends WordSpec with Matchers with Eventual
       }
 
       "invalid Kafka consumer configuration is given" in {
-        implicit val deserializer = TestConcreteProvider.ConcreteExample().deserializer()
+        import com.gruchalski.kafka.test.serializer.scala.TestConcreteSerdes._
         cluster.consume[TestConcreteProvider.ConcreteExample](
           clusterConfig.`com.gruchalski.kafka.topics`.head.get.name
         ).toEither should matchPattern { case Left(_) ⇒ }

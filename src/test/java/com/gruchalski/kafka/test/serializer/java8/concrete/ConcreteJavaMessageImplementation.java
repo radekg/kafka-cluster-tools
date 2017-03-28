@@ -16,34 +16,17 @@
 
 package com.gruchalski.kafka.test.serializer.java8.concrete;
 
-import com.gruchalski.kafka.scala.DeserializerProvider;
-import com.gruchalski.kafka.scala.SerializerProvider;
-import org.apache.kafka.common.serialization.Deserializer;
-import org.apache.kafka.common.serialization.Serializer;
+import com.gruchalski.kafka.test.serializer.java8.IdProvider;
 
-public class ConcreteJavaMessageImplementation
-        extends JavaConcreteMessageType
-        implements SerializerProvider<ConcreteJavaMessageImplementation>, DeserializerProvider<ConcreteJavaMessageImplementation> {
-
+public class ConcreteJavaMessageImplementation implements IdProvider {
     public int id() {
         return 1;
     }
-
     public final String property;
-
     public ConcreteJavaMessageImplementation() {
         this("undefined value");
     }
-
     public ConcreteJavaMessageImplementation(String property) {
         this.property = property;
-    }
-
-    public Serializer<ConcreteJavaMessageImplementation> serializer() {
-        return new JavaConcreteSerializer<ConcreteJavaMessageImplementation>();
-    }
-
-    public Deserializer<ConcreteJavaMessageImplementation> deserializer() {
-        return new JavaConcreteDeserializer<ConcreteJavaMessageImplementation>();
     }
 }
