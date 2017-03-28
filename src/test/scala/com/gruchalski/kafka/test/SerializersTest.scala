@@ -135,6 +135,28 @@ class SerializersTest extends WordSpec with Matchers with Eventually with Inside
         }
       }
 
+      "given string as a key and a string as value" in {
+        cluster.produce(
+          clusterConfig.`com.gruchalski.kafka.topics`.head.get.name,
+          Some("a key"),
+          "a value"
+        ).toEither match {
+            case Right(f) ⇒
+              import scala.concurrent.duration._
+              val result = Await.result(f, 1 second)
+              result shouldBe a[RecordMetadata]
+            case Left(error) ⇒
+              fail(error)
+          }
+        eventually {
+          cluster.consume[String, String](
+            clusterConfig.`com.gruchalski.kafka.topics`.head.get.name
+          ).toEither should matchPattern {
+            case Right(Some(ConsumedItem(Some("a key"), "a value", _))) ⇒
+          }
+        }
+      }
+
     }
   }
 

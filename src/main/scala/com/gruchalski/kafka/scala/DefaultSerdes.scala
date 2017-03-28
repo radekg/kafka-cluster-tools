@@ -26,79 +26,79 @@ object DefaultSerdes {
   /**
    * Byte array serializer.
    */
-  implicit val byteArraySerializer = new ByteArraySerializer
+  implicit lazy val byteArraySerializer = new ByteArraySerializer
 
   /**
    * Byte array deserializer.
    */
-  implicit val byteArrayDeserializer = new ByteArrayDeserializer
+  implicit lazy val byteArrayDeserializer = new ByteArrayDeserializer
 
   /**
    * [[java.nio.ByteBuffer]] serializer.
    */
-  implicit val byteBufferSerializer = new ByteBufferSerializer
+  implicit lazy val byteBufferSerializer = new ByteBufferSerializer
 
   /**
    * [[java.nio.ByteBuffer]] deserializer.
    */
-  implicit val byteBufferDeserializer = new ByteBufferDeserializer
+  implicit lazy val byteBufferDeserializer = new ByteBufferDeserializer
 
   /**
    * [[org.apache.kafka.common.utils.Bytes]] serializer.
    */
-  implicit val bytesSerializer = new BytesSerializer
+  implicit lazy val bytesSerializer = new BytesSerializer
 
   /**
    * [[org.apache.kafka.common.utils.Bytes]] deserializer.
    */
-  implicit val bytesDeserializer = new BytesDeserializer
+  implicit lazy val bytesDeserializer = new BytesDeserializer
 
   /**
    * [[java.lang.Double]] serializer.
    */
-  implicit val doubleSerializer = new DoubleSerializer
+  implicit lazy val doubleSerializer = new DoubleSerializer
 
   /**
    * [[java.lang.Double]] deserializer.
    */
-  implicit val doubleDeserializer = new DoubleDeserializer
+  implicit lazy val doubleDeserializer = new DoubleDeserializer
 
   /**
    * [[java.lang.Integer]] serializer.
    */
-  implicit val integerSerializer = new IntegerSerializer
+  implicit lazy val integerSerializer = new IntegerSerializer
 
   /**
    * [[java.lang.Integer]] deserializer.
    */
-  implicit val integerDeserializer = new IntegerDeserializer
+  implicit lazy val integerDeserializer = new IntegerDeserializer
 
   /**
    * [[java.lang.Long]] serializer.
    */
-  implicit val longSerializer = new LongSerializer
+  implicit lazy val longSerializer = new LongSerializer
 
   /**
    * [[java.lang.Long]] deserializer.
    */
-  implicit val longDeserializer = new LongDeserializer
+  implicit lazy val longDeserializer = new LongDeserializer
 
   /**
    * [[java.lang.String]] serializer.
    */
-  implicit val stringSerializer = new StringSerializer
+  implicit lazy val stringSerializer = new StringSerializer
 
   /**
    * [[java.lang.String]] deserializer.
    */
-  implicit val stringDeserializer = new StringDeserializer
+  implicit lazy val stringDeserializer = new StringDeserializer
 
   // scala specific:
 
   /**
    * [[scala.Int]] serializer.
    */
-  implicit val intSerializer = new Serializer[Int] {
+  implicit lazy val intSerializer = new Serializer[Int] {
     val s = integerSerializer
     def configure(configs: java.util.Map[String, _], isKey: Boolean): Unit = s.configure(configs, isKey)
     def serialize(topic: String, data: Int): Array[Byte] = s.serialize(topic, data)
@@ -108,7 +108,7 @@ object DefaultSerdes {
   /**
    * [[scala.Int]] deserializer.
    */
-  implicit val intDeserializer = new Deserializer[Int] {
+  implicit lazy val intDeserializer = new Deserializer[Int] {
     val d = integerDeserializer
     def configure(configs: java.util.Map[String, _], isKey: Boolean): Unit = d.configure(configs, isKey)
     def deserialize(topic: String, data: Array[Byte]): Int = d.deserialize(topic, data)
@@ -118,7 +118,7 @@ object DefaultSerdes {
   /**
    * [[scala.Double]] serializer.
    */
-  implicit val scalaDoubleSerializer = new Serializer[Double] {
+  implicit lazy val scalaDoubleSerializer = new Serializer[Double] {
     val s = doubleSerializer
     def configure(configs: java.util.Map[String, _], isKey: Boolean): Unit = s.configure(configs, isKey)
     def serialize(topic: String, data: Double): Array[Byte] = s.serialize(topic, data)
@@ -128,7 +128,7 @@ object DefaultSerdes {
   /**
    * [[scala.Double]] deserializer.
    */
-  implicit val scalaDoubleDeserializer = new Deserializer[Double] {
+  implicit lazy val scalaDoubleDeserializer = new Deserializer[Double] {
     val d = doubleDeserializer
     def configure(configs: java.util.Map[String, _], isKey: Boolean): Unit = d.configure(configs, isKey)
     def deserialize(topic: String, data: Array[Byte]): Double = d.deserialize(topic, data)
@@ -138,7 +138,7 @@ object DefaultSerdes {
   /**
    * [[scala.Long]] serializer.
    */
-  implicit val scalaLongSerializer = new Serializer[Long] {
+  implicit lazy val scalaLongSerializer = new Serializer[Long] {
     val s = longSerializer
     def configure(configs: java.util.Map[String, _], isKey: Boolean): Unit = s.configure(configs, isKey)
     def serialize(topic: String, data: Long): Array[Byte] = s.serialize(topic, data)
@@ -148,7 +148,7 @@ object DefaultSerdes {
   /**
    * [[scala.Long]] deserializer.
    */
-  implicit val scalaLongDeserializer = new Deserializer[Long] {
+  implicit lazy val scalaLongDeserializer = new Deserializer[Long] {
     val d = longDeserializer
     def configure(configs: java.util.Map[String, _], isKey: Boolean): Unit = d.configure(configs, isKey)
     def deserialize(topic: String, data: Array[Byte]): Long = d.deserialize(topic, data)
