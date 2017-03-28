@@ -37,7 +37,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
-public class JavaTests extends TestCase {
+public class ProduceConsumeTest extends TestCase {
 
     private SerdeRegistry serdes = SerdeRegistry.getInstance();
 
