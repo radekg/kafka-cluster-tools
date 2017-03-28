@@ -64,12 +64,9 @@ public class ProduceConsumeTest extends TestCase {
     }
 
     public void testClusterSetup() {
-        KafkaCluster cluster = new KafkaCluster();
-        Optional<KafkaClusterSafe> maybeCluster = cluster.start();
-        maybeCluster.ifPresent(new Consumer<KafkaClusterSafe>() {
+        new KafkaCluster().start().ifPresent(new Consumer<KafkaClusterSafe>() {
             @Override
             public void accept(KafkaClusterSafe kafkaClusterSafe) {
-
                 ArrayList<KafkaTopicConfiguration> topics = new ArrayList<>();
                 topics.add(new KafkaTopicConfiguration(
                         "test-topic",
@@ -78,7 +75,6 @@ public class ProduceConsumeTest extends TestCase {
                         new Properties(),
                         KafkaTopicConfiguration.toRackAwareMode("enforced").get()
                 ));
-
                 CountDownLatch latch = new CountDownLatch(topics.size());
                 CompletableFuture<List<KafkaTopicCreateResult>> topicCreateStatuses = kafkaClusterSafe.cluster.withTopics(topics);
                 topicCreateStatuses.thenAccept(results -> {
@@ -90,30 +86,24 @@ public class ProduceConsumeTest extends TestCase {
                         }
                     }
                 });
-
                 try {
                     latch.await(10000, TimeUnit.MILLISECONDS);
                 } catch (InterruptedException ex) {
                     fail(ex.getMessage());
                 }
-
                 ConcreteJavaMessageImplementation concrete = new ConcreteJavaMessageImplementation("unit-test-concrete");
-
                 try {
-
                     CountDownLatch producerLatch = new CountDownLatch(1);
                     kafkaClusterSafe.cluster.produce(
                             topics.get(0).name(),
                             concrete).thenAccept(result -> {
                         producerLatch.countDown();
                     });
-
                     try {
                         producerLatch.await(10000, TimeUnit.MILLISECONDS);
                     } catch (InterruptedException ex) {
                         fail(ex.getMessage());
                     }
-
                     AsyncUtil.eventually(() -> {
                         try {
 
@@ -126,7 +116,6 @@ public class ProduceConsumeTest extends TestCase {
                             fail(t.getMessage());
                         }
                     });
-
                 } catch (Throwable t) {
                     fail(t.getMessage());
                 } finally {
@@ -135,5 +124,4 @@ public class ProduceConsumeTest extends TestCase {
             }
         });
     }
-
 }
