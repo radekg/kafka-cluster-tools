@@ -14,9 +14,13 @@
  * limitations under the License.
  */
 
-package com.gruchalski.kafka.test.serializer.java8.concrete;
+package com.gruchalski.kafka.java8.exceptions;
 
-import com.gruchalski.kafka.test.serializer.java8.IdProvider;
-
-public abstract class JavaConcreteMessageType implements IdProvider {
+/**
+ * A serializer for the type not found exception.
+ */
+public class NoSerializerException extends Exception {
+    public NoSerializerException(String message) {
+        super(message);
+    }
 }

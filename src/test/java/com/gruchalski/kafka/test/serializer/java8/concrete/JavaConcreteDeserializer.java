@@ -23,16 +23,16 @@ import org.msgpack.core.MessageUnpacker;
 import java.io.IOException;
 import java.util.Map;
 
-public class JavaConcreteDeserializer<T extends JavaConcreteMessageType> implements Deserializer<T> {
+public class JavaConcreteDeserializer implements Deserializer<ConcreteJavaMessageImplementation> {
     public void configure(Map<String, ?> var1, boolean var2) {}
     public void close() {}
-    public T deserialize(String topic, byte[] data) {
+    public ConcreteJavaMessageImplementation deserialize(String topic, byte[] data) {
         MessageUnpacker unpacker = MessagePack.newDefaultUnpacker(data);
         try {
             int version = unpacker.unpackInt();
             int type = unpacker.unpackInt();
             if (type == 1) {
-                return (T)new ConcreteJavaMessageImplementation(
+                return new ConcreteJavaMessageImplementation(
                         unpacker.unpackString()
                 );
             }

@@ -23,25 +23,19 @@ import org.msgpack.core.MessagePack;
 import java.io.IOException;
 import java.util.Map;
 
-public class JavaConcreteSerializer<T extends JavaConcreteMessageType> implements Serializer<T> {
+public class JavaConcreteSerializer implements Serializer<ConcreteJavaMessageImplementation> {
     public void configure(Map<String, ?> var1, boolean var2) {}
     public void close() {}
-    public byte[] serialize(String topic, T input) {
+    public byte[] serialize(String topic, ConcreteJavaMessageImplementation input) {
         MessageBufferPacker packer = MessagePack.newDefaultBufferPacker();
-
-        if (input instanceof ConcreteJavaMessageImplementation) {
-            ConcreteJavaMessageImplementation item = (ConcreteJavaMessageImplementation)input;
-            try {
-                packer.packInt(item.id())
-                        .packInt(1)
-                        // actual data:
-                        .packString(item.property);
-                return packer.toByteArray();
-            } catch (IOException ex) {
-                return null;
-            }
+        try {
+            packer.packInt(input.id())
+                    .packInt(1)
+                    // actual data:
+                    .packString(input.property);
+            return packer.toByteArray();
+        } catch (IOException ex) {
+            return null;
         }
-
-        return null;
     }
 }

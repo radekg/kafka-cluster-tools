@@ -14,23 +14,13 @@
  * limitations under the License.
  */
 
-package com.gruchalski.kafka.scala
-
-import org.apache.kafka.common.serialization.{Deserializer, Serializer}
+package com.gruchalski.kafka.java8.exceptions;
 
 /**
- * Serializer provider.
- * @tparam ST type of the item handled by this serializer
+ * A deserializer for the type not found exception.
  */
-trait SerializerProvider[ST] { t: ST ⇒
-  def serializer(): Serializer[ST]
-}
-
-/**
- * Deserializer provider.
- * @tparam DST type of the item handled by this deserializer
- */
-trait DeserializerProvider[DST] { t: DST ⇒
-  type DeserializerType
-  def deserializer(): Deserializer[DST]
+public class NoDeserializerException extends Exception {
+    public NoDeserializerException(String message) {
+        super(message);
+    }
 }

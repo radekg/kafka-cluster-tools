@@ -17,11 +17,12 @@
 package com.gruchalski.kafka.java8;
 
 import com.gruchalski.kafka.java8.compat.ScalaCompat;
-import com.gruchalski.kafka.scala.*;
+import com.gruchalski.kafka.scala.ConsumedItem;
+import com.gruchalski.kafka.scala.KafkaTopicConfiguration;
+import com.gruchalski.kafka.scala.KafkaTopicCreateResult;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import org.apache.kafka.clients.producer.RecordMetadata;
-import org.apache.kafka.common.serialization.Deserializer;
 
 import java.util.Arrays;
 import java.util.List;
@@ -35,6 +36,8 @@ import java.util.stream.Collectors;
 public class KafkaCluster {
 
     final private com.gruchalski.kafka.scala.KafkaCluster cluster;
+
+    final private SerdeRegistry serdeRegistry = SerdeRegistry.getInstance();
 
     /**
      * Create new KafkaCluster with default configuration.
@@ -94,38 +97,67 @@ public class KafkaCluster {
      * Produce a message of a given type. If the producer for the given type does not exist, it will be created.
      * @param topic topic to send the message to
      * @param value value to send
-     * @param callback callback handling metadata or error, the callback is used to return a scala future
-     * @tparam <T> type of the value to send
+     * @param <V> type of the value to send
      * @return the metadata / error future
      */
-    public <T> Optional<CompletableFuture<RecordMetadata>> produce(String topic, SerializerProvider<T> value, com.gruchalski.kafka.java8.ProducerCallback callback)
+    public <V> CompletableFuture<RecordMetadata> produce(String topic, V value)
     throws Throwable {
+        return produce(topic, null, value);
+    }
+
+    /**
+     * Produce a message of a given type. If the producer for the given type does not exist, it will be created.
+     * @param topic topic to send the message to
+     * @param key key to send
+     * @param value value to send
+     * @param <K> type of the key to send
+     * @param <V> type of the value to send
+     * @return the metadata / error future
+     */
+    public <K, V> CompletableFuture<RecordMetadata> produce(String topic, K key, V value)
+            throws Throwable {
         // left is an error:
-        scala.util.Try<scala.Option<scala.concurrent.Future<RecordMetadata>>> _try = cluster.produce(topic, value, callback.callback);
-        scala.util.Either<Throwable, scala.Option<scala.concurrent.Future<RecordMetadata>>> _either = _try.toEither();
+        scala.util.Try<scala.concurrent.Future<RecordMetadata>> _try = cluster.produce(
+                topic,
+                scala.Option.apply(key),
+                value, serdeRegistry.getSerializerFor(key),
+                serdeRegistry.getSerializerFor(value));
+        scala.util.Either<Throwable, scala.concurrent.Future<RecordMetadata>> _either = _try.toEither();
         if (_either.isLeft()) {
             throw _either.left().get();
         }
         // well, else if right...
-        Optional<scala.concurrent.Future<RecordMetadata>> optional = ScalaCompat.fromScala(_either.right().get());
-        if (optional.isPresent()) {
-            return Optional.ofNullable(ScalaCompat.fromScala(optional.get()));
-        } else {
-            return Optional.ofNullable(null);
-        }
+        return ScalaCompat.fromScala(_either.right().get());
     }
 
     /**
      * Consume a Kafka message from a given topic using given deserializer.
      * @param topic topic to consume from
-     * @param deserializer deserializer to handle the type of the message
-     * @tparam <T> type of the message to consume
+     * @param valueDeserializerTypeClass class of the value type to deserialize
+     * @param <V> type of the value to consume
      * @return a consumed object, if available at the time of the call
      */
-    public <T extends DeserializerProvider<?>> Optional<ConsumedItem<T>> consume(String topic, Deserializer<T> deserializer)
+    public <V> Optional<ConsumedItem<byte[], V>> consume(String topic, Class<V> valueDeserializerTypeClass)
     throws Throwable {
-        scala.util.Try<scala.Option<ConsumedItem<T>>> _try = cluster.consume(topic, deserializer);
-        scala.util.Either<Throwable, scala.Option<ConsumedItem<T>>> _either = _try.toEither();
+        return consume(topic, byte[].class, valueDeserializerTypeClass);
+    }
+
+    /**
+     * Consume a Kafka message from a given topic using given deserializer.
+     * @param topic topic to consume from
+     * @param keyDeserializerTypeClass class of the key type to deserialize
+     * @param valueDeserializerTypeClass class of the value type to deserialize
+     * @param <K> type of the key to consume
+     * @param <V> type of the value to consume
+     * @return a consumed object, if available at the time of the call
+     */
+    public <K, V> Optional<ConsumedItem<K, V>> consume(String topic, Class<K> keyDeserializerTypeClass, Class<V> valueDeserializerTypeClass)
+            throws Throwable {
+        scala.util.Try<scala.Option<ConsumedItem<K, V>>> _try = cluster.consume(
+                topic,
+                serdeRegistry.getDeserializerFor(keyDeserializerTypeClass),
+                serdeRegistry.getDeserializerFor(valueDeserializerTypeClass));
+        scala.util.Either<Throwable, scala.Option<ConsumedItem<K, V>>> _either = _try.toEither();
         if (_either.isLeft()) {
             throw _either.left().get();
         }

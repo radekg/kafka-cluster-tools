@@ -43,11 +43,13 @@ case class ProducerCallback() extends Callback {
 
 /**
  * Represents a materialized consumed item.
- * @param deserializedItem deserialized item
+ * @param key deserialized key
+ * @param value deserialized value
  * @param record original consumed record
- * @tparam T type of a consumed item
+ * @tparam K type of a consumed key
+ * @tparam V type of a consumed value
  */
-case class ConsumedItem[T](deserializedItem: T, record: ConsumerRecord[Array[Byte], Array[Byte]])
+case class ConsumedItem[K, V](key: Option[K], value: V, record: ConsumerRecord[Array[Byte], Array[Byte]])
 
 /**
  * Internal Kafka consumer worker.

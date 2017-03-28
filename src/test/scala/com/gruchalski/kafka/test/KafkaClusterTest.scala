@@ -23,8 +23,8 @@ import org.scalatest.concurrent.Eventually
 import org.scalatest.time.{Milliseconds, Seconds, Span}
 import org.scalatest.{Inside, Matchers, WordSpec}
 
-import concurrent.{ExecutionContext, Future}
-import util.{Failure, Success}
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success}
 
 class KafkaClusterTest extends WordSpec with Matchers with Eventually with Inside {
 
@@ -35,10 +35,10 @@ class KafkaClusterTest extends WordSpec with Matchers with Eventually with Insid
   "The MessagePack serialization" must {
     "serialize and deserialize" when {
       "given an inplementation of serializable" in {
-
+        import com.gruchalski.kafka.test.serializer.scala.TestConcreteSerdes._
         val inst = TestConcreteProvider.ConcreteExample(property = "unit test data")
-        val bytes = inst.serializer().serialize("topic-name", inst)
-        inst.deserializer().deserialize("topic-name", bytes) shouldBe inst
+        val bytes = concreteExampleSerializer.serialize("topic-name", inst)
+        concreteExampleDeserializer.deserialize("topic-name", bytes) shouldBe inst
 
       }
     }
@@ -73,6 +73,7 @@ class KafkaClusterTest extends WordSpec with Matchers with Eventually with Insid
       }
 
       "produce and consume messages from a topic" in {
+        import com.gruchalski.kafka.test.serializer.scala.TestConcreteSerdes._
         val cluster = KafkaCluster()
         cluster.start() match {
           case Some(safe) ⇒
@@ -99,12 +100,10 @@ class KafkaClusterTest extends WordSpec with Matchers with Eventually with Insid
 
             // should be able to publish:
             var receivedMetadata: Option[RecordMetadata] = None
-            safe.cluster.produce(topicToUse, concreteToUse).foreach { opt ⇒
-              opt.foreach { f ⇒
-                f.onComplete {
-                  case Success(metadata) ⇒ receivedMetadata = Some(metadata)
-                  case Failure(ex)       ⇒ fail(ex)
-                }
+            safe.cluster.produce(topicToUse, concreteToUse).map { f ⇒
+              f.onComplete {
+                case Success(metadata) ⇒ receivedMetadata = Some(metadata)
+                case Failure(ex)       ⇒ fail(ex)
               }
             }
 
@@ -113,10 +112,10 @@ class KafkaClusterTest extends WordSpec with Matchers with Eventually with Insid
             }
 
             // should be able to consume the published message:
-            implicit val concreteDeserializer = concreteToUse.deserializer()
             eventually {
               val consumed = safe.cluster.consume[TestConcreteProvider.ConcreteExample](topicToUse)
-              consumed.toEither should matchPattern { case Right(Some(ConsumedItem(concreteToUse, _))) ⇒ }
+              val either = consumed.toEither
+              either should matchPattern { case Right(Some(ConsumedItem(None, concreteToUse, _))) ⇒ }
             }
 
           case None ⇒ fail("Expected Kafka cluster to come up.")

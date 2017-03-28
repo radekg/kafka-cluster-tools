@@ -14,6 +14,9 @@ libraryDependencies ++= DependencyGroups.unitTests
 libraryDependencies ++= DependencyGroups.zookeeper
 
 crossPaths := false
+
+parallelExecution in ThisBuild := false
+
 testOptions in Test := Seq(Tests.Argument(TestFrameworks.JUnit, "-a"))
 
 coverageEnabled in Test := true
