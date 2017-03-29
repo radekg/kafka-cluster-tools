@@ -30,7 +30,7 @@ object Library {
   val kafkaClients: ModuleID = "org.apache.kafka" % "kafka-clients" % Version.kafka excludeAll(Exclusions.excludeAll: _*)
   val logbackClassic: ModuleID = "ch.qos.logback" % "logback-classic" % Version.logbackClassic
   val msgPack: ModuleID = "org.msgpack" % "msgpack-core" % Version.msgPack
-  val scalaLogging: ModuleID = "com.typesafe.scala-logging" % "scala-logging_2.11" % Version.scalaLogging
+  val scalaLogging: ModuleID = "com.typesafe.scala-logging" %% "scala-logging" % Version.scalaLogging
   val scalaJava8Compat: ModuleID = "org.scala-lang.modules" %% "scala-java8-compat" % Version.scalaJava8Compat
   val scalaTest: ModuleID =  "org.scalatest" %% "scalatest" % Version.scalaTest excludeAll(Exclusions.excludeAll: _*)
   val slf4j: ModuleID = "org.slf4j" % "log4j-over-slf4j" % Version.slf4j
