@@ -24,7 +24,7 @@ import com.typesafe.scalalogging.Logger
 import kafka.admin.AdminUtils
 import kafka.server.{KafkaConfig, KafkaServer}
 import kafka.utils.{MockTime, TestUtils}
-import org.apache.kafka.clients.consumer.{ConsumerRecord, KafkaConsumer}
+import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord, RecordMetadata}
 import org.apache.kafka.common.network.ListenerName
 import org.apache.kafka.common.serialization.{ByteArraySerializer, Deserializer, Serializer}
@@ -55,7 +55,7 @@ class KafkaCluster()(implicit
   private var executor: Option[ExecutorService] = None
 
   private var producer: Option[KafkaProducer[Array[Byte], Array[Byte]]] = None
-  private var consumer: Option[KafkaConsumer[Array[Byte], Array[Byte]]] = None
+  private var consumerWorker: Option[ConsumerWorker] = None
   private val consumerInitialized = new AtomicBoolean(false)
 
   private var outQueues = MHashMap.empty[String, KafkaCluster.OutQueue]
@@ -124,10 +124,10 @@ class KafkaCluster()(implicit
     logger.info("Kafka cluster stop requested, stopping all components...")
     executor.foreach(_.shutdownNow())
     producer.foreach(_.close())
-    consumer.foreach { c ⇒ Try(c.close()) }
+    consumerWorker.foreach { c ⇒ Try(c.askStop(ConsumerWorkerProtocol.Shutdown())) }
     kafkaServers.foreach(_.shutdown())
     zooKeeper.stop()
-    consumer = None
+    consumerWorker = None
     producer = None
     executor = None
     outQueues.clear()
@@ -169,7 +169,7 @@ class KafkaCluster()(implicit
                 }
                 timeout = System.currentTimeMillis() - start >= configuration.`com.gruchalski.kafka.topic-wait-for-create-success-timeout-ms`
               }
-              if (timeout) {
+              if (timeout && status == KafkaTopicStatus.DoesNotExist()) {
                 logger.error(s"Creating topic ${topicConfig.name} timed out. Considered not created!")
               }
               KafkaTopicCreateResult(topicConfig, status)
@@ -268,9 +268,9 @@ class KafkaCluster()(implicit
     kafkaServers.headOption match {
       case Some(kafkaServer) ⇒
         Try {
-          if (consumer == None) {
+          if (consumerWorker == None) {
             logger.info("No consumer found. Creating one...")
-            val _consumer = TestUtils.createNewConsumer(
+            val consumer = TestUtils.createNewConsumer(
               brokerList = bootstrapServers().mkString(","),
               groupId = configuration.`com.gruchalski.kafka.consumer.group-id`,
               autoOffsetReset = configuration.`com.gruchalski.kafka.consumer.auto-offset-reset`,
@@ -280,36 +280,36 @@ class KafkaCluster()(implicit
               props = Some(configuration.`com.gruchalski.kafka.consumer.props`)
             )
             logger.info("Consumer is now ready.")
-            consumer = Some(_consumer)
+            val work = new ConsumerWorker(configuration, consumer)
+            consumerWorker = Some(work)
+            executor.foreach(_.submit(work))
           }
           if (!outQueues.contains(topic)) {
-            consumer.foreach { c ⇒
-              if (c.listTopics().containsKey(topic)) {
-                import collection.JavaConverters._
-                if (consumerInitialized.get() == false) {
-                  schedulePoll()
-                  consumerInitialized.set(true)
-                }
-                outQueues.put(topic, new ConcurrentLinkedDeque[ConsumerRecord[Array[Byte], Array[Byte]]]())
-                c.subscribe(List(topic).asJava)
-              } else {
-                throw new NoTopicException(topic)
-              }
+            consumerWorker.foreach { worker ⇒
+              val newQueue = new ConcurrentLinkedDeque[ConsumerRecord[Array[Byte], Array[Byte]]]()
+              outQueues.put(topic, newQueue)
+              worker.askSubscribe(ConsumerWorkerProtocol.Subscribe(topic, newQueue))
             }
           }
 
-          Option(outQueues.getOrElseUpdate(topic, new ConcurrentLinkedDeque[ConsumerRecord[Array[Byte], Array[Byte]]]()).poll()) match {
-            case Some(record) ⇒
-              Some(
-                ConsumedItem(
-                  Try(Option(keyDeserializer.deserialize(topic, record.key()))).getOrElse(None),
-                  valueDeserializer.deserialize(topic, record.value()),
-                  record
-                )
-              )
+          outQueues.get(topic) match {
+            case Some(queue) ⇒
+              Option(queue.poll()) match {
+                case Some(record) ⇒
+                  Some(
+                    ConsumedItem(
+                      Try(Option(keyDeserializer.deserialize(topic, record.key()))).getOrElse(None),
+                      valueDeserializer.deserialize(topic, record.value()),
+                      record
+                    )
+                  )
+                case None ⇒
+                  None
+              }
             case None ⇒
-              None
+              throw new ExpectedAtLeastEmptyTopicPLaceholderException(topic)
           }
+
         }
       case None ⇒
         logger.error("No Kafka servers available in the cluster for consumption.")
@@ -325,30 +325,6 @@ class KafkaCluster()(implicit
     kafkaServers.map { server ⇒
       Try(Some(s"localhost:${server.boundPort(ListenerName.normalised("plaintext"))}")).getOrElse(None)
     }.flatten
-  }
-
-  private def schedulePoll(): Unit = {
-    consumer.foreach { c ⇒
-      executor.foreach { exec ⇒
-        if (!exec.isShutdown) {
-          scheduleWithConsumerAndExecutor(c, exec)
-        }
-      }
-    }
-  }
-
-  private def scheduleWithConsumerAndExecutor(consumer: KafkaConsumer[Array[Byte], Array[Byte]], executor: ExecutorService): Unit = {
-    executor.submit(ConsumerWork(configuration.`com.gruchalski.kafka.consumer.poll-timeout-ms`, consumer) { result ⇒
-      result match {
-        case Left(error) ⇒
-          logger.error(s"Error while polling for messages. Reason: $error.")
-        case Right(records) ⇒
-          records.foreach { record ⇒
-            outQueues.get(record.topic).foreach(_.offer(record))
-          }
-      }
-      schedulePoll()
-    })
   }
 
 }

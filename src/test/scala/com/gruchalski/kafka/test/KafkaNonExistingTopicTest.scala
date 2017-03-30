@@ -66,9 +66,10 @@ class KafkaNonExistingTopicTest extends WordSpec with Matchers with Eventually w
 
       "a message is consumed from a non-existing topic" in {
         import com.gruchalski.kafka.test.serializer.scala.TestConcreteSerdes._
+        Thread.sleep(1000)
         cluster.consume[TestConcreteProvider.ConcreteExample](
           "non-existing-topic"
-        ).toEither should matchPattern { case Left(_) ⇒ }
+        ).toEither should matchPattern { case Right(None) ⇒ }
       }
 
     }
