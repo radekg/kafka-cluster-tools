@@ -20,9 +20,9 @@ import java.nio.charset.StandardCharsets
 
 import com.gruchalski.kafka.scala._
 import org.apache.kafka.clients.producer.RecordMetadata
-import org.scalatest.{BeforeAndAfterAll, Inside, Matchers, WordSpec}
-import org.scalatest.concurrent.{Eventually, Waiters}
+import org.scalatest.concurrent.Eventually
 import org.scalatest.time.{Milliseconds, Seconds, Span}
+import org.scalatest.{BeforeAndAfterAll, Inside, Matchers, WordSpec}
 
 import scala.concurrent.{Await, Future}
 import scala.util.{Failure, Success}

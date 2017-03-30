@@ -95,12 +95,11 @@ class KafkaClusterTest extends WordSpec with Matchers with Eventually with Insid
               }
             }
 
-            val topicToUse = safe.configuration.`com.gruchalski.kafka.topics`.head.get.name
             val concreteToUse = TestConcreteProvider.ConcreteExample(property = "full kafka publish / consume test")
 
             // should be able to publish:
             var receivedMetadata: Option[RecordMetadata] = None
-            safe.cluster.produce(topicToUse, concreteToUse).map { f ⇒
+            safe.cluster.produce(safe.configuration.`com.gruchalski.kafka.topics`.head.get.name, concreteToUse).map { f ⇒
               f.onComplete {
                 case Success(metadata) ⇒ receivedMetadata = Some(metadata)
                 case Failure(ex)       ⇒ fail(ex)
@@ -113,9 +112,31 @@ class KafkaClusterTest extends WordSpec with Matchers with Eventually with Insid
 
             // should be able to consume the published message:
             eventually {
-              val consumed = safe.cluster.consume[TestConcreteProvider.ConcreteExample](topicToUse)
+              val consumed = safe.cluster.consume[TestConcreteProvider.ConcreteExample](safe.configuration.`com.gruchalski.kafka.topics`.head.get.name)
               val either = consumed.toEither
               either should matchPattern { case Right(Some(ConsumedItem(None, concreteToUse, _))) ⇒ }
+            }
+
+            // and verify that we are able to consume multiple topics within the same session:
+            import com.gruchalski.kafka.scala.DefaultSerdes._
+            var otherReceivedMetadata: Option[RecordMetadata] = None
+            // compacted topic needs a key:
+            safe.cluster.produce(safe.configuration.`com.gruchalski.kafka.topics`.last.get.name, Some("key"), "some data for the other topic").map { f ⇒
+              f.onComplete {
+                case Success(metadata) ⇒ otherReceivedMetadata = Some(metadata)
+                case Failure(ex)       ⇒ fail(ex)
+              }
+            }
+
+            eventually {
+              otherReceivedMetadata should matchPattern { case Some(_) ⇒ }
+            }
+
+            // should be able to consume the published message from the other topic:
+            eventually {
+              val consumed = safe.cluster.consume[String, String](safe.configuration.`com.gruchalski.kafka.topics`.last.get.name)
+              val either = consumed.toEither
+              either should matchPattern { case Right(Some(ConsumedItem(Some(_), _, _))) ⇒ }
             }
 
           case None ⇒ fail("Expected Kafka cluster to come up.")

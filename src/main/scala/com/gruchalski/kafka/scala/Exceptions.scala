@@ -16,5 +16,5 @@
 
 package com.gruchalski.kafka.scala
 
-class NoTopicException(val topic: String) extends Exception(topic)
+class ExpectedAtLeastEmptyTopicPLaceholderException(val topic: String) extends Exception(topic)
 class NoServersToProduce() extends Exception()

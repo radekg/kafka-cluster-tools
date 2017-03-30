@@ -16,11 +16,14 @@
 
 package com.gruchalski.kafka.scala
 
+import java.util
+import java.util.concurrent.{ConcurrentHashMap, ConcurrentLinkedDeque}
+
+import com.typesafe.scalalogging.Logger
 import org.apache.kafka.clients.consumer.{ConsumerRecord, KafkaConsumer}
 import org.apache.kafka.clients.producer.{Callback, RecordMetadata}
 
 import scala.concurrent.{Future, Promise}
-import scala.util.Try
 
 /**
  * Producer callback. Use <code>result()</code> method to get the data.
@@ -52,17 +55,91 @@ case class ProducerCallback() extends Callback {
 case class ConsumedItem[K, V](key: Option[K], value: V, record: ConsumerRecord[Array[Byte], Array[Byte]])
 
 /**
- * Internal Kafka consumer worker.
- * @param pollTimeout how long to wait for a single batch of data
- * @param consumer Kafka consumer
- * @param callback callback
+ * Consumer worker protocol:
  */
-case class ConsumerWork(
-    pollTimeout: Long,
+object ConsumerWorkerProtocol {
+  sealed trait Protocol
+
+  /**
+   * Subscribe to a topic.
+   * @param topic topic to subscribe to
+   * @param outQueue outbound queue to use for the messages of this topic
+   */
+  case class Subscribe(
+    topic: String,
+    outQueue: ConcurrentLinkedDeque[ConsumerRecord[Array[Byte], Array[Byte]]]
+  ) extends Protocol
+
+  /**
+   * As the worker to terminate and close the consumer.
+   */
+  case class Shutdown() extends Protocol
+}
+
+/**
+ * Consumer worker runnable.
+ * @param configuration Kafka cluster configuration
+ * @param consumer Kafka consumer
+ */
+class ConsumerWorker(
+    configuration: Configuration,
     consumer: KafkaConsumer[Array[Byte], Array[Byte]]
-)(callback: (Either[Throwable, List[ConsumerRecord[Array[Byte], Array[Byte]]]]) ⇒ Unit) extends Runnable {
+) extends Runnable {
+
+  private val logger = Logger(getClass)
+
+  private var terminated = false
+  private val subscriptions = new ConcurrentHashMap[String, ConcurrentLinkedDeque[ConsumerRecord[Array[Byte], Array[Byte]]]]()
+  private val nextPassSubscribe = new util.ArrayList[ConsumerWorkerProtocol.Subscribe]()
+
+  /**
+   * Offer a message to the worker.
+   * @param message message to offer
+   */
+  def askSubscribe(message: ConsumerWorkerProtocol.Subscribe): Unit = {
+    if (!terminated) {
+      logger.info(s"I will attempt subscribing to: ${message.topic}...")
+      nextPassSubscribe.add(message)
+    }
+  }
+
+  def askStop(message: ConsumerWorkerProtocol.Shutdown): Unit = {
+    logger.info(s"I am going to ask the consumer to stop...")
+    terminated = true
+  }
+
   override def run(): Unit = {
-    import collection.JavaConverters._
-    callback.apply(Try(consumer.poll(pollTimeout).asScala.toList).toEither)
+    import scala.collection.JavaConverters._
+    while (!terminated) {
+
+      // do we need to subscribe to anything?
+      if (!nextPassSubscribe.isEmpty) {
+        nextPassSubscribe.asScala.foreach { message ⇒
+          if (!subscriptions.containsKey(message.topic)) {
+            if (consumer.listTopics().containsKey(message.topic)) {
+              logger.info(s"Subscribing to topic ${message.topic}...")
+              consumer.subscribe(List(message.topic).asJava)
+              subscriptions.put(message.topic, message.outQueue)
+              logger.info(s"Successfully subscribed to topic ${message.topic}.")
+            } else {
+              logger.warn(s"Topic ${message.topic} not found by the consumer.")
+            }
+          }
+        }
+        nextPassSubscribe.clear()
+      }
+
+      if (!subscriptions.isEmpty) {
+        consumer.poll(configuration.`com.gruchalski.kafka.consumer.poll-timeout-ms`).iterator().asScala.foreach { record ⇒
+          if (subscriptions.containsKey(record.topic())) {
+            subscriptions.get(record.topic()).offer(record)
+          }
+        }
+      }
+    }
+
+    logger.info("Kafka consumer stopped.")
+
+    consumer.close()
   }
 }
