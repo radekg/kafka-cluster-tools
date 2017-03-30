@@ -118,9 +118,10 @@ class ConsumerWorker(
           if (!subscriptions.containsKey(message.topic)) {
             if (consumer.listTopics().containsKey(message.topic)) {
               logger.info(s"Subscribing to topic ${message.topic}...")
-              consumer.subscribe(List(message.topic).asJava)
               subscriptions.put(message.topic, message.outQueue)
-              logger.info(s"Successfully subscribed to topic ${message.topic}.")
+              val topicList = subscriptions.keys().asScala.toList
+              consumer.subscribe(topicList.asJava)
+              logger.info(s"Consumer successfully subscribed to topics: ${topicList.mkString(", ")}.")
             } else {
               logger.warn(s"Topic ${message.topic} not found by the consumer.")
             }
