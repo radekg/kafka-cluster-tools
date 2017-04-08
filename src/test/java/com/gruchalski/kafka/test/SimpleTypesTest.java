@@ -23,7 +23,8 @@ import com.gruchalski.kafka.scala.ConsumedItem;
 import com.gruchalski.kafka.scala.KafkaTopicConfiguration;
 import com.gruchalski.kafka.scala.KafkaTopicCreateResult;
 import com.gruchalski.testing.AsyncUtil;
-import junit.framework.TestCase;
+import static org.junit.Assert.*;
+import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,9 +35,10 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
-public class SimpleTypesTest extends TestCase {
+public class SimpleTypesTest {
     private String aKey = "a test key";
     private String aValue = "a test value";
+    @Test
     public void testClusterSetup() {
         new KafkaCluster().start().ifPresent(new Consumer<KafkaClusterSafe>() {
             @Override
@@ -83,7 +85,7 @@ public class SimpleTypesTest extends TestCase {
                             Optional<ConsumedItem<String, String>> consumed = kafkaClusterSafe.cluster.consume(
                                     topics.get(0).name(), String.class, String.class);
 
-                            assertEquals(consumed.get().key(), aKey);
+                            assertEquals(consumed.get().key().get(), aKey);
                             assertEquals(consumed.get().value(), aValue);
                         } catch (Throwable t) {
                             fail(t.getMessage());
