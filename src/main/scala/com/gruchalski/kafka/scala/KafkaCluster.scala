@@ -51,6 +51,7 @@ class KafkaCluster()(implicit
 
   private val configuration = Configuration(config)
   private val zooKeeper = EmbeddedZooKeeper(configuration)
+  private var maybeZooKeeperData: Option[EmbeddedZooKeeper.EmbeddedZooKeeperData] = None
   private var kafkaServers = List.empty[KafkaServer]
   private var executor: Option[ExecutorService] = None
 
@@ -103,6 +104,7 @@ class KafkaCluster()(implicit
             logger.error("Kafka is not running.")
             None
           } else {
+            maybeZooKeeperData = Some(EmbeddedZooKeeper.EmbeddedZooKeeperData(instances, connectionString))
             executor = Some(Executors.newSingleThreadExecutor())
             logger.info("Kafka cluster is now running.")
             Some(KafkaClusterSafe(this, configuration))
@@ -319,13 +321,21 @@ class KafkaCluster()(implicit
 
   /**
    * Get bootstrap servers for the safe cluster.
-   * @return
+   * @return list of plaintext listener addresses
    */
   def bootstrapServers(): List[String] = {
     kafkaServers.map { server ⇒
       Try(Some(s"localhost:${server.boundPort(ListenerName.normalised("plaintext"))}")).getOrElse(None)
     }.flatten
   }
+
+  /**
+   * Get list of ZooKeeper addresses, if any.
+   * @return list of zookeeper addresses
+   */
+  def zooKeeperAddresses(): List[String] = maybeZooKeeperData
+    .map(_.connectionString.split(",").toList)
+    .getOrElse(List.empty[String])
 
 }
 

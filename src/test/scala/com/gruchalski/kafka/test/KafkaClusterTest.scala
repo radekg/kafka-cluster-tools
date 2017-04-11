@@ -97,6 +97,8 @@ class KafkaClusterTest extends WordSpec with Matchers with Eventually with Insid
               }
             }
 
+            cluster.zooKeeperAddresses().length should be > 0
+
             val concreteToUse = TestConcreteProvider.ConcreteExample(property = "full kafka publish / consume test")
 
             // should be able to publish:
