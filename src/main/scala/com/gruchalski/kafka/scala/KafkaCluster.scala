@@ -133,6 +133,7 @@ class KafkaCluster()(implicit
     producer = None
     executor = None
     outQueues.clear()
+    maybeZooKeeperData = None
     kafkaServers = List.empty[KafkaServer]
     consumerInitialized.set(false)
     logger.info("All components stopped. Please consider not reusing this instance.")
