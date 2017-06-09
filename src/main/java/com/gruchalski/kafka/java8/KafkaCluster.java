@@ -24,9 +24,7 @@ import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import org.apache.kafka.clients.producer.RecordMetadata;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
@@ -91,6 +89,24 @@ public class KafkaCluster {
                                 topicConfigs.iterator()
                         ).toList()));
         return CompletableFuture.allOf(seq).thenApply(v -> Arrays.stream(seq).map(CompletableFuture::join).collect(Collectors.toList()));
+    }
+    
+    /**
+     * For a list of topics, return a list of expected successful create statuses.
+     * @param topicConfigs topic configurations
+     * @return list of expected successful statuses
+     */
+    public List<KafkaTopicCreateResult> expectedResultsForTopicCreation(List<KafkaTopicConfiguration> topicConfigs) {
+        List<KafkaTopicCreateResult> list = new ArrayList<>();
+        Iterator<KafkaTopicCreateResult> javaIter = scala.collection.JavaConverters.asJavaIterator(
+          cluster.expectedResultsForTopicCreation(
+            scala.collection.JavaConverters.asScalaIterator(
+              topicConfigs.iterator()
+            ).toList()
+          ).toIterator()
+        );
+        javaIter.forEachRemaining(list::add);
+        return list;
     }
 
     /**

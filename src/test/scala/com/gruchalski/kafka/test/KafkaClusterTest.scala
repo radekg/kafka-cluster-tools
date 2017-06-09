@@ -54,7 +54,8 @@ class KafkaClusterTest extends WordSpec with Matchers with Eventually with Insid
         val cluster = KafkaCluster()
         cluster.start() match {
           case Some(safe) ⇒
-            val topics = safe.configuration.`com.gruchalski.kafka.topics`.flatten
+            implicit val topics = safe.configuration.`com.gruchalski.kafka.topics`.flatten
+            val expectedResults = cluster.expectedResultsForTopicCreation
             @volatile var topicCreateStatuses = List.empty[KafkaTopicCreateResult]
             Future.sequence(safe.cluster.withTopics(topics)).onComplete {
               case Success(statuses) ⇒
@@ -64,9 +65,7 @@ class KafkaClusterTest extends WordSpec with Matchers with Eventually with Insid
             }
             eventually {
               topicCreateStatuses should matchPattern {
-                case List(
-                  KafkaTopicCreateResult(_, KafkaTopicStatus.Exists(), None),
-                  KafkaTopicCreateResult(_, KafkaTopicStatus.Exists(), None)) ⇒
+                case `expectedResults` ⇒
               }
             }
           case None ⇒ fail("Expected Kafka cluster to come up.")
@@ -80,7 +79,8 @@ class KafkaClusterTest extends WordSpec with Matchers with Eventually with Insid
         cluster.start() match {
           case Some(safe) ⇒
 
-            val topics = safe.configuration.`com.gruchalski.kafka.topics`.flatten
+            implicit val topics = safe.configuration.`com.gruchalski.kafka.topics`.flatten
+            val expectedResults = cluster.expectedResultsForTopicCreation
             @volatile var topicCreateStatuses = List.empty[KafkaTopicCreateResult]
             Future.sequence(safe.cluster.withTopics(topics)).onComplete {
               case Success(statuses) ⇒
@@ -91,9 +91,7 @@ class KafkaClusterTest extends WordSpec with Matchers with Eventually with Insid
 
             eventually {
               topicCreateStatuses should matchPattern {
-                case List(
-                  KafkaTopicCreateResult(_, KafkaTopicStatus.Exists(), None),
-                  KafkaTopicCreateResult(_, KafkaTopicStatus.Exists(), None)) ⇒
+                case `expectedResults` ⇒
               }
             }
 
