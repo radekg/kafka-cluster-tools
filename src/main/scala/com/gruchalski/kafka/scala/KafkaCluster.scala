@@ -146,7 +146,7 @@ class KafkaCluster()(implicit
    * @param topicConfigs topic configurations
    * @return list of create statuses futures
    */
-  def withTopics(topicConfigs: List[KafkaTopicConfiguration]): List[Future[KafkaTopicCreateResult]] = {
+  def withTopics(implicit topicConfigs: List[KafkaTopicConfiguration] = List.empty[KafkaTopicConfiguration]): List[Future[KafkaTopicCreateResult]] = {
     kafkaServers.headOption match {
       case Some(kafkaServer) ⇒
         topicConfigs.map { topicConfig ⇒
@@ -190,6 +190,17 @@ class KafkaCluster()(implicit
       case None ⇒
         logger.error("No Kafka servers available in the cluster for topic creation.")
         List.empty[Future[KafkaTopicCreateResult]]
+    }
+  }
+
+  /**
+   * For a list of topics, return a list of expected successful create statuses.
+   * @param topicConfigs topic configurations
+   * @return list of expected successful statuses
+   */
+  def expectedResultsForTopicCreation(implicit topicConfigs: List[KafkaTopicConfiguration] = List.empty[KafkaTopicConfiguration]): List[KafkaTopicCreateResult] = {
+    topicConfigs.map { topicConfig ⇒
+      new KafkaTopicCreateResult(topicConfig, KafkaTopicStatus.Exists(), None)
     }
   }
 
