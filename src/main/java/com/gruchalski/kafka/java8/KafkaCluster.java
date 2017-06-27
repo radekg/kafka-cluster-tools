@@ -23,6 +23,7 @@ import com.gruchalski.kafka.scala.KafkaTopicCreateResult;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import org.apache.kafka.clients.producer.RecordMetadata;
+import java.util.List;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -178,5 +179,13 @@ public class KafkaCluster {
             throw _either.left().get();
         }
         return ScalaCompat.fromScala(_either.right().get());
+    }
+
+    /**
+     * Get bootstrap servers for the safe cluster.
+     * @return list of plaintext listener addresses
+     */
+    public List<String> bootstrapServers() {
+        return scala.collection.JavaConverters.seqAsJavaList(cluster.bootstrapServers());
     }
 }
