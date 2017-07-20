@@ -4,7 +4,7 @@ object Version {
   val apacheCurator = "2.12.0"
   val junit = "4.12"
   val junitInterface = "0.11"
-  val kafka = "0.10.2.0"
+  val kafka = "0.10.2.1"
   val logbackClassic = "1.1.3"
   val msgPack = "0.8.12"
   val scalaLogging = "3.5.0"
