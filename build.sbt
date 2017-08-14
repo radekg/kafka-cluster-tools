@@ -1,12 +1,12 @@
 name := "kafka-cluster-tools"
 organization := "com.gruchalski"
 scalaVersion := "2.12.3"
+crossScalaVersions := Seq("2.11.11", "2.12.3")
 
 lazy val root = project
   .in(file("."))
   .enablePlugins(AutomateHeaderPlugin, SbtScalariform)
   .settings(
-    crossScalaVersions := Seq("2.11.11", "2.12.3"),
     libraryDependencies ++= DependencyGroups.configuration
       ++ DependencyGroups.logging
       ++ DependencyGroups.kafka
@@ -14,7 +14,7 @@ lazy val root = project
       ++ Seq(Library.msgPack, Library.scalaJava8Compat)
       ++ DependencyGroups.unitTests
       ++ DependencyGroups.zookeeper,
-    crossPaths := false,
+    crossPaths := true,
     parallelExecution in ThisBuild := false,
     testOptions in Test := Seq(Tests.Argument(TestFrameworks.JUnit, "-a")),
     coverageEnabled in Test := true,
