@@ -61,6 +61,12 @@ public class ScalaCompat {
         return arrItems;
     }
     
+    /**
+     * Convert Scala Iterator to Java Iterator.
+     * @param iter Scala iterator
+     * @param <T> iterator type
+     * @return Java iterator
+     */
     public static <T> java.util.Iterator<T> asJavaIterator(scala.collection.Iterator<T> iter) {
         ArrayList<T> list = new ArrayList<>();
         iter.foreach(new AbstractFunction1<T, Object>() {
@@ -71,6 +77,12 @@ public class ScalaCompat {
         return list.iterator();
     }
     
+    /**
+     * Convert Scala sequence to Java list.
+     * @param seq Scala sequence
+     * @param <T> sequence type
+     * @return Java list
+     */
     public static <T> java.util.List<T> seqAsJavaList(scala.collection.Seq<T> seq) {
         ArrayList<T> list = new ArrayList<>();
         seq.foreach(new AbstractFunction1<T, Object>() {

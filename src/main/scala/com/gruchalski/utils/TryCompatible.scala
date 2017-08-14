@@ -18,6 +18,12 @@ package com.gruchalski.utils
 
 import scala.util.Try
 
+/**
+ * A [[scala.util.Try]] wrapper object providing a version independent [[scala.util.Either]] method.
+ * @param underlyingTry [[scala.util.Try]]
+ * @tparam T Try type
+ * @since 1.4.0
+ */
 case class TryCompatible[+T](underlyingTry: Try[T]) {
   def toVersionCompatibleEither: Either[Throwable, T] = {
     if (underlyingTry.isSuccess) Right(underlyingTry.get) else Left(underlyingTry.failed.get)

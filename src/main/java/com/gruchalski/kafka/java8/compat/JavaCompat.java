@@ -16,8 +16,17 @@
 
 package com.gruchalski.kafka.java8.compat;
 
+/**
+ * Compatibility with Java.
+ */
 public class JavaCompat {
   
+  /**
+   * Convert Java Iterator to Scala Iterator.
+   * @param iter Java iterator to convert to Scala iterator
+   * @param <T> iterator type
+   * @return scala iterator
+   */
   public static <T> scala.collection.Iterator<T> asScalaIterator(java.util.Iterator<T> iter) {
     scala.collection.mutable.ArrayBuffer<T> buf = new scala.collection.mutable.ArrayBuffer<T>();
     while (iter.hasNext()) {
