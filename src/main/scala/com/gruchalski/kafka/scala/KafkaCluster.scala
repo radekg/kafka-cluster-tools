@@ -19,6 +19,7 @@ package com.gruchalski.kafka.scala
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.{ConcurrentLinkedDeque, ExecutorService, Executors}
 
+import com.gruchalski.utils.TryCompatible
 import com.typesafe.config.{Config, ConfigFactory}
 import com.typesafe.scalalogging.Logger
 import kafka.admin.AdminUtils
@@ -152,7 +153,7 @@ class KafkaCluster()(implicit
         topicConfigs.map { topicConfig ⇒
 
           logger.info(s"Attempting creating topic ${topicConfig.name} with partitions: ${topicConfig.partitions}...")
-          Try {
+          TryCompatible(Try {
             AdminUtils.createTopic(
               kafkaServer.zkUtils,
               topicConfig.name,
@@ -164,20 +165,18 @@ class KafkaCluster()(implicit
             Future {
               val start = System.currentTimeMillis()
               var status: KafkaTopicStatus.Status = KafkaTopicStatus.DoesNotExist()
-              var timeout = false
-              while (status == KafkaTopicStatus.DoesNotExist || !timeout) {
+              while (System.currentTimeMillis() - start < configuration.`com.gruchalski.kafka.topic-wait-for-create-success-timeout-ms`) {
                 Thread.sleep(50)
                 if (AdminUtils.topicExists(kafkaServer.zkUtils, topicConfig.name)) {
                   status = KafkaTopicStatus.Exists()
                 }
-                timeout = System.currentTimeMillis() - start >= configuration.`com.gruchalski.kafka.topic-wait-for-create-success-timeout-ms`
               }
-              if (timeout && status == KafkaTopicStatus.DoesNotExist()) {
+              if (status == KafkaTopicStatus.DoesNotExist()) {
                 logger.error(s"Creating topic ${topicConfig.name} timed out. Considered not created!")
               }
               KafkaTopicCreateResult(topicConfig, status)
             }
-          }.toEither match {
+          }).toVersionCompatibleEither match {
             case Left(error) ⇒
               logger.error(s"Topic ${topicConfig.name} not created. Reason: $error.")
               Future(KafkaTopicCreateResult(topicConfig, KafkaTopicStatus.DoesNotExist(), Some(error)))
@@ -211,7 +210,7 @@ class KafkaCluster()(implicit
    * @tparam V type of the value to send
    * @return the metadata / error future
    */
-  implicit def produce[V](topic: String, value: V)(implicit serializer: Serializer[V]): Try[Future[RecordMetadata]] = {
+  implicit def produce[V](topic: String, value: V)(implicit serializer: Serializer[V]): TryCompatible[Future[RecordMetadata]] = {
     produce[Array[Byte], V](topic, None, value)
   }
 
@@ -224,10 +223,10 @@ class KafkaCluster()(implicit
    * @tparam V type of the value to send
    * @return the metadata / error future
    */
-  implicit def produce[K, V](topic: String, key: Option[K], value: V)(implicit keySerializer: Serializer[K], valueSerializer: Serializer[V]): Try[Future[RecordMetadata]] = {
+  implicit def produce[K, V](topic: String, key: Option[K], value: V)(implicit keySerializer: Serializer[K], valueSerializer: Serializer[V]): TryCompatible[Future[RecordMetadata]] = {
     kafkaServers.headOption match {
       case Some(kafkaServer) ⇒
-        Try {
+        TryCompatible(Try {
           if (producer == None) {
             logger.info("No producer found. Creating one...")
             producer = Some(TestUtils.createNewProducer[Array[Byte], Array[Byte]](
@@ -258,14 +257,14 @@ class KafkaCluster()(implicit
             )
           }
           callback.result()
-        }
+        })
       case None ⇒
         logger.error("No Kafka servers available in the cluster for publishing.")
-        Try(throw new NoServersToProduce)
+        TryCompatible(Try(throw new NoServersToProduce))
     }
   }
 
-  implicit def consume[V](topic: String)(implicit valueDeserializer: Deserializer[V]): Try[Option[ConsumedItem[Array[Byte], V]]] = {
+  implicit def consume[V](topic: String)(implicit valueDeserializer: Deserializer[V]): TryCompatible[Option[ConsumedItem[Array[Byte], V]]] = {
     consume[Array[Byte], V](topic)
   }
 
@@ -278,10 +277,10 @@ class KafkaCluster()(implicit
    * @tparam V type of the value to consume
    * @return a consumed object, if available at the time of the call
    */
-  implicit def consume[K, V](topic: String)(implicit keyDeserializer: Deserializer[K], valueDeserializer: Deserializer[V]): Try[Option[ConsumedItem[K, V]]] = {
+  implicit def consume[K, V](topic: String)(implicit keyDeserializer: Deserializer[K], valueDeserializer: Deserializer[V]): TryCompatible[Option[ConsumedItem[K, V]]] = {
     kafkaServers.headOption match {
       case Some(kafkaServer) ⇒
-        Try {
+        TryCompatible(Try {
           if (consumerWorker == None) {
             logger.info("No consumer found. Creating one...")
             val consumer = TestUtils.createNewConsumer(
@@ -324,10 +323,10 @@ class KafkaCluster()(implicit
               throw new ExpectedAtLeastEmptyTopicPLaceholderException(topic)
           }
 
-        }
+        })
       case None ⇒
         logger.error("No Kafka servers available in the cluster for consumption.")
-        Try(None)
+        TryCompatible(Try(None))
     }
   }
 

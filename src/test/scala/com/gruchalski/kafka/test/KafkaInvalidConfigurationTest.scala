@@ -72,14 +72,14 @@ class KafkaInvalidConfigurationTest extends WordSpec with Matchers with Eventual
         cluster.produce(
           clusterConfig.`com.gruchalski.kafka.topics`.head.get.name,
           TestConcreteProvider.ConcreteExample()
-        ).toEither should matchPattern { case Left(_) ⇒ }
+        ).toVersionCompatibleEither should matchPattern { case Left(_) ⇒ }
       }
 
       "invalid Kafka consumer configuration is given" in {
         import com.gruchalski.kafka.test.serializer.scala.TestConcreteSerdes._
         cluster.consume[TestConcreteProvider.ConcreteExample](
           clusterConfig.`com.gruchalski.kafka.topics`.head.get.name
-        ).toEither should matchPattern { case Left(_) ⇒ }
+        ).toVersionCompatibleEither should matchPattern { case Left(_) ⇒ }
       }
 
     }

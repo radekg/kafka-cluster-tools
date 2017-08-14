@@ -20,9 +20,12 @@ import com.gruchalski.kafka.java8.compat.ScalaCompat;
 import com.gruchalski.kafka.scala.ConsumedItem;
 import com.gruchalski.kafka.scala.KafkaTopicConfiguration;
 import com.gruchalski.kafka.scala.KafkaTopicCreateResult;
+import com.gruchalski.utils.TryCompatible;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import org.apache.kafka.clients.producer.RecordMetadata;
+import scala.concurrent.Future;
+
 import java.util.List;
 
 import java.util.*;
@@ -86,7 +89,7 @@ public class KafkaCluster {
     public CompletableFuture<List<KafkaTopicCreateResult>> withTopics(List<KafkaTopicConfiguration> topicConfigs) {
         CompletableFuture<KafkaTopicCreateResult> seq[] = ScalaCompat.fromScala(
                 cluster.withTopics(
-                        scala.collection.JavaConverters.asScalaIterator(
+                        com.gruchalski.kafka.java8.compat.JavaCompat.asScalaIterator(
                                 topicConfigs.iterator()
                         ).toList()));
         return CompletableFuture.allOf(seq).thenApply(v -> Arrays.stream(seq).map(CompletableFuture::join).collect(Collectors.toList()));
@@ -99,9 +102,9 @@ public class KafkaCluster {
      */
     public List<KafkaTopicCreateResult> expectedResultsForTopicCreation(List<KafkaTopicConfiguration> topicConfigs) {
         List<KafkaTopicCreateResult> list = new ArrayList<>();
-        Iterator<KafkaTopicCreateResult> javaIter = scala.collection.JavaConverters.asJavaIterator(
+        Iterator<KafkaTopicCreateResult> javaIter = com.gruchalski.kafka.java8.compat.ScalaCompat.asJavaIterator(
           cluster.expectedResultsForTopicCreation(
-            scala.collection.JavaConverters.asScalaIterator(
+            com.gruchalski.kafka.java8.compat.JavaCompat.asScalaIterator(
               topicConfigs.iterator()
             ).toList()
           ).toIterator()
@@ -134,12 +137,12 @@ public class KafkaCluster {
     public <K, V> CompletableFuture<RecordMetadata> produce(String topic, K key, V value)
             throws Throwable {
         // left is an error:
-        scala.util.Try<scala.concurrent.Future<RecordMetadata>> _try = cluster.produce(
+        TryCompatible<Future<RecordMetadata>> _try = cluster.produce(
                 topic,
                 scala.Option.apply(key),
                 value, serdeRegistry.getSerializerFor(key),
                 serdeRegistry.getSerializerFor(value));
-        scala.util.Either<Throwable, scala.concurrent.Future<RecordMetadata>> _either = _try.toEither();
+        scala.util.Either<Throwable, scala.concurrent.Future<RecordMetadata>> _either = _try.toVersionCompatibleEither();
         if (_either.isLeft()) {
             throw _either.left().get();
         }
@@ -170,11 +173,11 @@ public class KafkaCluster {
      */
     public <K, V> Optional<ConsumedItem<K, V>> consume(String topic, Class<K> keyDeserializerTypeClass, Class<V> valueDeserializerTypeClass)
             throws Throwable {
-        scala.util.Try<scala.Option<ConsumedItem<K, V>>> _try = cluster.consume(
+        TryCompatible<scala.Option<ConsumedItem<K, V>>> _try = cluster.consume(
                 topic,
                 serdeRegistry.getDeserializerFor(keyDeserializerTypeClass),
                 serdeRegistry.getDeserializerFor(valueDeserializerTypeClass));
-        scala.util.Either<Throwable, scala.Option<ConsumedItem<K, V>>> _either = _try.toEither();
+        scala.util.Either<Throwable, scala.Option<ConsumedItem<K, V>>> _either = _try.toVersionCompatibleEither();
         if (_either.isLeft()) {
             throw _either.left().get();
         }
@@ -186,6 +189,6 @@ public class KafkaCluster {
      * @return list of plaintext listener addresses
      */
     public List<String> bootstrapServers() {
-        return scala.collection.JavaConverters.seqAsJavaList(cluster.bootstrapServers());
+        return com.gruchalski.kafka.java8.compat.ScalaCompat.seqAsJavaList(cluster.bootstrapServers());
     }
 }

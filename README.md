@@ -2,10 +2,6 @@
 
 An opinionated set of tools for working with Kafka in unit tests.  
 
-Primarily targeted at Scala 2.12 but comes with a Java 8 compatibility API.  
-
-**This project uses Scala 2.12 `scala.util.Try` API. As such, the project is not compatible with Scala 2.11.**  
-
 The library handles serialization and deserialization on its own, outside of Kafka. It uses `Array[Byte]` for key
 and value serializers / deserializers under the hood. Serializers and deserializers are provided to the library
 by the concrete implementation of the messages.
@@ -18,14 +14,16 @@ by the concrete implementation of the messages.
     
 ## Use with SBT
 
-    libraryDependencies += "com.gruchalski" %% "kafka-cluster-tools" % "1.3.3" % "test"
+Supported Scala versions: `2.11` and `2.12`:
+
+    libraryDependencies += "com.gruchalski" %% "kafka-cluster-tools" % "1.4.0" % "test"
 
 ## Use with Maven
 
     <dependency>
         <groupId>com.gruchalski</groupId>
-        <artifactId>kafka-cluster-tools</artifactId>
-        <version>1.3.3</version>
+        <artifactId>kafka-cluster-tools_${scala.major.version}</artifactId>
+        <version>1.4.0</version>
         <scope>test</scope>
     </dependency>
 
@@ -52,7 +50,7 @@ KafkaCluster().start() match {
       case Success(statuses) ⇒
         // topics have been created; to inspect the statuses of topic creation, look inside of statuses
         val topicToUse = "some-topic-created-in-the-previous-step"
-        safe.cluster.produce(topicToUse, Some("a key"), "a value").toEither match {
+        safe.cluster.produce(topicToUse, Some("a key"), "a value").toVersionCompatibleEither match {
           case Left(error) ⇒ println(s"Failed to publish. Reason: $error.")
           case Right(fut) ⇒ fut.onComplete {
             case Failure(error) ⇒ println(s"Failed to publish. Reason: $error.")
@@ -250,7 +248,7 @@ import TestConcreteSerdes._
 safe.cluster.produce("topic", Some("a key"), ConcreteExample(property = "Hey, publishing custom type"))
 // consume:
 val consumed = safe.cluster.consume[String, ConcreteExample]("topic")
-// consumed.toEither should be
+// consumed.toVersionCompatibleEither should be
 // Right(Some(ConsumedItem(Some("a key"), concrete-item, original-kafka-record)))
 ```
 
