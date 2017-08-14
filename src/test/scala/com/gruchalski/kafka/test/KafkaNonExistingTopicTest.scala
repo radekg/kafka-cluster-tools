@@ -69,7 +69,7 @@ class KafkaNonExistingTopicTest extends WordSpec with Matchers with Eventually w
         Thread.sleep(1000)
         cluster.consume[TestConcreteProvider.ConcreteExample](
           "non-existing-topic"
-        ).toEither should matchPattern { case Right(None) ⇒ }
+        ).toVersionCompatibleEither should matchPattern { case Right(None) ⇒ }
       }
 
     }

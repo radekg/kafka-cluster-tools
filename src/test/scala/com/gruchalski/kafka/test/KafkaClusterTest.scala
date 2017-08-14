@@ -18,9 +18,8 @@ package com.gruchalski.kafka.test
 
 import java.util.concurrent.atomic.AtomicInteger
 
-import com.gruchalski.kafka.scala.{ConsumedItem, KafkaCluster, KafkaTopicCreateResult, KafkaTopicStatus}
+import com.gruchalski.kafka.scala.{ConsumedItem, KafkaCluster, KafkaTopicCreateResult}
 import com.gruchalski.kafka.test.serializer.scala.TestConcreteProvider
-import org.apache.kafka.clients.producer.RecordMetadata
 import org.scalatest.concurrent.Eventually
 import org.scalatest.time.{Milliseconds, Seconds, Span}
 import org.scalatest.{Inside, Matchers, WordSpec}
@@ -104,7 +103,7 @@ class KafkaClusterTest extends WordSpec with Matchers with Eventually with Insid
             // should be able to consume the published message:
             eventually {
               val consumed = safe.cluster.consume[TestConcreteProvider.ConcreteExample](safe.configuration.`com.gruchalski.kafka.topics`.head.get.name)
-              val either = consumed.toEither
+              val either = consumed.toVersionCompatibleEither
               either should matchPattern { case Right(Some(ConsumedItem(None, concreteToUse, _))) ⇒ }
             }
 
@@ -119,7 +118,7 @@ class KafkaClusterTest extends WordSpec with Matchers with Eventually with Insid
             }
             eventually {
               val consumed = safe.cluster.consume[String, String](safe.configuration.`com.gruchalski.kafka.topics`.last.get.name)
-              val either = consumed.toEither
+              val either = consumed.toVersionCompatibleEither
               either should matchPattern { case Right(Some(ConsumedItem(Some(_), _, _))) ⇒ }
               consumedCount.incrementAndGet() shouldBe toPublish
             }
@@ -128,7 +127,7 @@ class KafkaClusterTest extends WordSpec with Matchers with Eventually with Insid
             safe.cluster.produce(safe.configuration.`com.gruchalski.kafka.topics`.head.get.name, concreteToUse)
             eventually {
               val consumed = safe.cluster.consume[TestConcreteProvider.ConcreteExample](safe.configuration.`com.gruchalski.kafka.topics`.head.get.name)
-              val either = consumed.toEither
+              val either = consumed.toVersionCompatibleEither
               either should matchPattern { case Right(Some(ConsumedItem(None, concreteToUse, _))) ⇒ }
             }
 

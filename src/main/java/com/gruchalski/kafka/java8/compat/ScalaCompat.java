@@ -16,6 +16,9 @@
 
 package com.gruchalski.kafka.java8.compat;
 
+import scala.runtime.AbstractFunction1;
+
+import java.util.ArrayList;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
@@ -56,6 +59,26 @@ public class ScalaCompat {
             arrItems[i] = ScalaCompat.fromScala(lfut.apply(i));
         }
         return arrItems;
+    }
+    
+    public static <T> java.util.Iterator<T> asJavaIterator(scala.collection.Iterator<T> iter) {
+        ArrayList<T> list = new ArrayList<>();
+        iter.foreach(new AbstractFunction1<T, Object>() {
+            public T apply(T item) {
+                return item;
+            }
+        });
+        return list.iterator();
+    }
+    
+    public static <T> java.util.List<T> seqAsJavaList(scala.collection.Seq<T> seq) {
+        ArrayList<T> list = new ArrayList<>();
+        seq.foreach(new AbstractFunction1<T, Object>() {
+            public T apply(T item) {
+                return item;
+            }
+        });
+        return list;
     }
 
 }

@@ -73,7 +73,7 @@ class SerializersTest extends WordSpec with Matchers with Eventually with Inside
           clusterConfig.`com.gruchalski.kafka.topics`.head.get.name,
           Some("key-string"),
           1
-        ).toEither match {
+        ).toVersionCompatibleEither match {
             case Right(f) ⇒
               import scala.concurrent.duration._
               val result = Await.result(f, 1 second)
@@ -84,7 +84,7 @@ class SerializersTest extends WordSpec with Matchers with Eventually with Inside
         eventually {
           cluster.consume[String, Int](
             clusterConfig.`com.gruchalski.kafka.topics`.head.get.name
-          ).toEither should matchPattern {
+          ).toVersionCompatibleEither should matchPattern {
             case Right(Some(ConsumedItem(Some("key-string"), 1, _))) ⇒
           }
         }
@@ -95,7 +95,7 @@ class SerializersTest extends WordSpec with Matchers with Eventually with Inside
           clusterConfig.`com.gruchalski.kafka.topics`.head.get.name,
           Some(1),
           1D
-        ).toEither match {
+        ).toVersionCompatibleEither match {
             case Right(f) ⇒
               import scala.concurrent.duration._
               val result = Await.result(f, 1 second)
@@ -106,7 +106,7 @@ class SerializersTest extends WordSpec with Matchers with Eventually with Inside
         eventually {
           cluster.consume[Int, Double](
             clusterConfig.`com.gruchalski.kafka.topics`.head.get.name
-          ).toEither should matchPattern {
+          ).toVersionCompatibleEither should matchPattern {
             case Right(Some(ConsumedItem(Some(1), 1D, _))) ⇒
           }
         }
@@ -118,7 +118,7 @@ class SerializersTest extends WordSpec with Matchers with Eventually with Inside
           clusterConfig.`com.gruchalski.kafka.topics`.head.get.name,
           Some(100L),
           bytes
-        ).toEither match {
+        ).toVersionCompatibleEither match {
             case Right(f) ⇒
               import scala.concurrent.duration._
               val result = Await.result(f, 1 second)
@@ -129,7 +129,7 @@ class SerializersTest extends WordSpec with Matchers with Eventually with Inside
         eventually {
           cluster.consume[Long, Array[Byte]](
             clusterConfig.`com.gruchalski.kafka.topics`.head.get.name
-          ).toEither should matchPattern {
+          ).toVersionCompatibleEither should matchPattern {
             case Right(Some(ConsumedItem(Some(100L), bytes, _))) ⇒
           }
         }
@@ -140,7 +140,7 @@ class SerializersTest extends WordSpec with Matchers with Eventually with Inside
           clusterConfig.`com.gruchalski.kafka.topics`.head.get.name,
           Some("a key"),
           "a value"
-        ).toEither match {
+        ).toVersionCompatibleEither match {
             case Right(f) ⇒
               import scala.concurrent.duration._
               val result = Await.result(f, 1 second)
@@ -151,7 +151,7 @@ class SerializersTest extends WordSpec with Matchers with Eventually with Inside
         eventually {
           cluster.consume[String, String](
             clusterConfig.`com.gruchalski.kafka.topics`.head.get.name
-          ).toEither should matchPattern {
+          ).toVersionCompatibleEither should matchPattern {
             case Right(Some(ConsumedItem(Some("a key"), "a value", _))) ⇒
           }
         }
