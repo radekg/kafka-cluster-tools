@@ -18,9 +18,8 @@ package com.gruchalski.kafka.test
 
 import java.util.concurrent.atomic.AtomicInteger
 
-import com.gruchalski.kafka.scala.{ConsumedItem, KafkaCluster, KafkaTopicCreateResult, KafkaTopicStatus}
+import com.gruchalski.kafka.scala.{ConsumedItem, KafkaCluster, KafkaTopicCreateResult}
 import com.gruchalski.kafka.test.serializer.scala.TestConcreteProvider
-import org.apache.kafka.clients.producer.RecordMetadata
 import org.scalatest.concurrent.Eventually
 import org.scalatest.time.{Milliseconds, Seconds, Span}
 import org.scalatest.{Inside, Matchers, WordSpec}

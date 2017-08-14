@@ -23,7 +23,6 @@ import com.gruchalski.kafka.scala.ConsumedItem;
 import com.gruchalski.kafka.scala.KafkaTopicConfiguration;
 import com.gruchalski.kafka.scala.KafkaTopicCreateResult;
 import com.gruchalski.testing.AsyncUtil;
-import static org.junit.Assert.*;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -34,6 +33,9 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public class SimpleTypesTest {
     private String aKey = "a test key";

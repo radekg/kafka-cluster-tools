@@ -26,8 +26,6 @@ import com.typesafe.config.ConfigFactory;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import scala.concurrent.Future;
 
-import java.util.List;
-
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;

@@ -16,7 +16,6 @@
 
 package com.gruchalski.kafka.java8.compat;
 
-import scala.Function1;
 import scala.runtime.AbstractFunction1;
 
 import java.util.ArrayList;
